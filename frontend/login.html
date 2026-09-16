@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login - PharmaHub</title>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+
+<body>
+
+    <header>
+        <nav>
+            <h1>PharmaHub</h1>
+
+            <div>
+                <a href="index.html">Home</a>
+                <a href="medicines.html">Medicines</a>
+                <a href="register.html">Register</a>
+                <a href="cart.html">Cart 🛒</a>
+            </div>
+        </nav>
+    </header>
+
+    <main class="auth-page">
+
+    <section class="auth-card">
+
+        <div class="auth-header">
+            <div class="auth-icon">🔐</div>
+
+            <h2>Welcome Back</h2>
+
+            <p>
+                Login to your PharmaHub account.
+            </p>
+        </div>
+
+        <form id="login-form">
+
+            <div class="form-group">
+                <label for="username">Username</label>
+
+                <input
+                    type="text"
+                    id="username"
+                    placeholder="Enter your username"
+                    required
+                >
+            </div>
+
+            <div class="form-group">
+                <label for="password">Password</label>
+
+                <input
+                    type="password"
+                    id="password"
+                    placeholder="Enter your password"
+                    required
+                >
+            </div>
+
+            <button type="submit" class="auth-button">
+                Login
+            </button>
+
+        </form>
+
+        <p id="login-message" class="form-message"></p>
+
+        <p class="auth-footer">
+            Don't have an account?
+            <a href="register.html">Create one</a>
+        </p>
+
+    </section>
+
+    </main>
+
+    <script src="js/login.js"></script>
+
+</body>
+</html>

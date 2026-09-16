@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Register - PharmaHub</title>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+
+<body>
+
+    <header>
+        <nav>
+            <h1>PharmaHub</h1>
+
+            <div>
+                <a href="index.html">Home</a>
+                <a href="medicines.html">Medicines</a>
+                <a href="login.html">Login</a>
+                <a href="cart.html">Cart 🛒</a>
+            </div>
+        </nav>
+    </header>
+
+    <main class="auth-page">
+
+        <section class="auth-card">
+
+            <div class="auth-header">
+                <div class="auth-icon">👤</div>
+                <h2>Create Your Account</h2>
+                <p>Join PharmaHub and order your medicines with ease.</p>
+            </div>
+
+            <form id="register-form">
+
+                <div class="form-group">
+                    <label for="username">Username</label>
+                    <input
+                        type="text"
+                        id="username"
+                        placeholder="Enter your username"
+                        required
+                    >
+                </div>
+
+                <div class="form-group">
+                    <label for="email">Email</label>
+                    <input
+                        type="email"
+                        id="email"
+                        placeholder="Enter your email"
+                        required
+                    >
+                </div>
+
+                <div class="form-group">
+                    <label for="password">Password</label>
+                    <input
+                        type="password"
+                        id="password"
+                        placeholder="Enter your password"
+                        required
+                    >
+                </div>
+
+                <button type="submit" class="auth-button">
+                    Create Account
+                </button>
+
+            </form>
+
+            <p id="register-message" class="form-message"></p>
+
+            <p class="auth-footer">
+                Already have an account?
+                <a href="login.html">Login</a>
+            </p>
+
+        </section>
+
+    </main>
+
+    <script src="js/register.js"></script>
+
+</body>
+</html>
