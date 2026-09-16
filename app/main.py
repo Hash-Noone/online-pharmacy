@@ -2,12 +2,18 @@ from fastapi import FastAPI, HTTPException, Query, Depends
 from pydantic import BaseModel, Field
 from datetime import datetime, timedelta, timezone
 from jose import JWTError, jwt
+from enum import Enum
 from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
+from pwdlib import PasswordHash
 
+password_hash = PasswordHash.recommended()
 SECRET_KEY = "your_secret_key"
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 30
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="admin/login")
+customer_oauth2_scheme = OAuth2PasswordBearer(
+    tokenUrl="login"
+)
 
 class Admin(BaseModel):
     username: str
@@ -52,9 +58,30 @@ class OrderItem(BaseModel):
 
 class Order(BaseModel):
     id: int
+    customer_username: str
     items: list[OrderItem]
     total_price: float
     status: str
+
+class OrderStatus(str, Enum):
+    PENDING = "Pending"
+    PROCESSING = "Processing"
+    SHIPPED = "Shipped"
+    DELIVERED = "Delivered"
+    CANCELLED = "Cancelled"
+
+class OrderStatusUpdate(BaseModel):
+        status: OrderStatus
+
+class Customer(BaseModel):
+    username: str
+    email: str
+    password: str
+
+class CustomerResponse(BaseModel):
+    username: str
+    email: str
+
 
 app = FastAPI(title="PharmaHub API")
 
@@ -72,7 +99,9 @@ medicines = {
     "category": "Pain Relief"
   }
 }
-cart = {}
+
+customers = {}
+carts = {}
 orders = {}
 next_order_id = 1
 
@@ -95,7 +124,7 @@ def get_current_admin(token: str = Depends(oauth2_scheme)):
         headers={"WWW-Authenticate": "Bearer"},
     )
 
-    try:
+    try:    
         payload = jwt.decode(
             token,
             SECRET_KEY,
@@ -103,14 +132,43 @@ def get_current_admin(token: str = Depends(oauth2_scheme)):
         )
 
         username = payload.get("sub")
+        role = payload.get("role")
 
-        if username is None:
+        if username is None or role != "admin":
             raise credentials_exception
 
     except JWTError:
         raise credentials_exception
 
     if username != admin_credentials["username"]:
+        raise credentials_exception
+
+    return username
+
+def get_current_customer(token: str = Depends(customer_oauth2_scheme)):
+    credentials_exception = HTTPException(
+        status_code=401,
+        detail="Could not validate credentials",
+        headers={"WWW-Authenticate": "Bearer"},
+    )
+
+    try:
+        payload = jwt.decode(
+            token,
+            SECRET_KEY,
+            algorithms=[ALGORITHM]
+        )
+
+        username: str | None = payload.get("sub")
+        role = payload.get("role")
+
+        if username is None or role != "customer":
+            raise credentials_exception
+
+    except JWTError:
+        raise credentials_exception
+
+    if username not in customers:
         raise credentials_exception
 
     return username
@@ -158,11 +216,15 @@ def search_medicines(
     return results
 
 @app.get("/cart")
-def get_cart():
+def get_cart(current_customer: str = Depends(get_current_customer)):
+    customer_cart = carts.get(current_customer, {})
+
     cart_items = []
     total_price = 0.0
-    for medicine_id, quantity in cart.items():
+
+    for medicine_id, quantity in customer_cart.items():
         medicine = medicines.get(medicine_id)
+
         if medicine:
             cart_items.append({
                 "medicine_id": medicine_id,
@@ -171,8 +233,13 @@ def get_cart():
                 "price": medicine["price"],
                 "total_price": medicine["price"] * quantity
             })
+
             total_price += medicine["price"] * quantity
-    return {"cart": cart_items, "total_price": total_price}
+
+    return {
+        "cart": cart_items,
+        "total_price": total_price
+    }
 
 @app.get("/medicines/{medicine_id}", response_model=MedicineResponse)
 def get_medicine(medicine_id: int):
@@ -207,12 +274,14 @@ def add_medicine(medicine: Medicine, current_admin: str = Depends(get_current_ad
     return created_medicine
 
 @app.post("/cart")
-def add_to_cart(item: CartItem):
+def add_to_cart(item: CartItem, current_customer: str = Depends(get_current_customer)):
     medicine = medicines.get(item.medicine_id)
     if not medicine:
         raise HTTPException(status_code=404, detail="Medicine not found")
 
-    previous_quantity = cart.get(item.medicine_id, 0)
+    customer_cart = carts.get(current_customer, {})
+
+    previous_quantity = customer_cart.get(item.medicine_id, 0)
 
     new_quantity = previous_quantity + item.quantity
 
@@ -222,19 +291,21 @@ def add_to_cart(item: CartItem):
             detail="Not enough stock available"
         )
 
-    cart[item.medicine_id] = new_quantity
+    customer_cart[item.medicine_id] = new_quantity
+    carts[current_customer] = customer_cart
 
-    return {"message": f"Added {cart[item.medicine_id]} of {medicine['name']} to cart."}
+    return {"message": f"Added {customer_cart[item.medicine_id]} of {medicine['name']} to cart."}
 
 @app.post("/checkout")
-def checkout():
-    if not cart:
+def checkout(current_customer: str = Depends(get_current_customer)):
+    customer_cart = carts.get(current_customer, {})
+    if not customer_cart:
         raise HTTPException(status_code=400, detail="Cart is empty")
 
     order_items = []
     total_price = 0.0
 
-    for medicine_id, quantity in cart.items():
+    for medicine_id, quantity in customer_cart.items():
         medicine = medicines.get(medicine_id)
         if not medicine:
             raise HTTPException(status_code=404, detail=f"Medicine with ID {medicine_id} not found")
@@ -257,6 +328,7 @@ def checkout():
     global next_order_id
     order = Order(
         id=next_order_id,
+        customer_username=current_customer,
         items=order_items,
         total_price=total_price,
         status="Pending"
@@ -267,16 +339,89 @@ def checkout():
     for item in order_items:
         medicines[item.medicine_id]["stock"] -= item.quantity
 
-    cart.clear()
+    carts.pop(current_customer, None)
 
     return {"message": "Order placed successfully", "order": order}
 
+@app.post("/login")
+def customer_login(form_data: OAuth2PasswordRequestForm = Depends()):
+    customer = customers.get(form_data.username)
+
+    if not customer:
+        raise HTTPException(
+            status_code=401,
+            detail="Invalid username or password"
+        )
+
+    if not password_hash.verify(
+        form_data.password,
+        customer["password"]
+    ) == True:
+        raise HTTPException(
+            status_code=401,
+            detail="Invalid username or password"
+        )
+
+    access_token = create_access_token(
+    data={
+        "sub": form_data.username,
+        "role": "customer"
+    }
+)
+    
+    return {
+        "access_token": access_token,
+        "token_type": "bearer"
+    }
+
 @app.post("/admin/login")
 def admin_login(form_data: OAuth2PasswordRequestForm = Depends()):
-    if form_data.username == admin_credentials["username"] and form_data.password == admin_credentials["password"]:
-        access_token = create_access_token(data={"sub": form_data.username})
-        return {"access_token": access_token, "token_type": "bearer"}
-    raise HTTPException(status_code=401, detail="Invalid credentials")
+
+    if (
+        form_data.username == admin_credentials["username"]
+        and form_data.password == admin_credentials["password"]
+    ):
+        access_token = create_access_token(
+            data={
+                "sub": form_data.username,
+                "role": "admin"
+            }
+        )
+
+        return {
+            "access_token": access_token,
+            "token_type": "bearer"
+        }
+
+    raise HTTPException(
+        status_code=401,
+        detail="Invalid credentials"
+    )
+
+@app.post("/register", response_model=CustomerResponse)
+def register_customer(customer: Customer):
+
+    if customer.username in customers or any(
+        cust["email"] == customer.email
+        for cust in customers.values()
+    ):
+        raise HTTPException(
+            status_code=400,
+            detail="Username or email already exists"
+        )
+
+    hashed_password = password_hash.hash(customer.password)
+
+    customers[customer.username] = {
+        "username": customer.username,
+        "email": customer.email,
+        "password": hashed_password
+    }
+
+    return CustomerResponse(
+        username=customer.username,
+        email=customer.email
+    )
 
 @app.put("/medicines/{medicine_id}", response_model=MedicineResponse)
 def update_medicine(medicine_id: int, medicine: MedicineUpdate, current_admin: str = Depends(get_current_admin)):
@@ -298,20 +443,85 @@ def update_medicine(medicine_id: int, medicine: MedicineUpdate, current_admin: s
     )   
 
 @app.put("/cart/{medicine_id}")
-def update_cart_item(medicine_id: int, item: CartUpdate):
+def update_cart_item(medicine_id: int, item: CartUpdate, current_customer: str = Depends(get_current_customer)):
     if medicine_id not in medicines:
         raise HTTPException(status_code=404, detail="Medicine not found")
 
-    if medicine_id not in cart:
+    if medicine_id not in carts.get(current_customer, {}):
         raise HTTPException(status_code=404, detail="Item not found in cart")
 
     if medicines[medicine_id]["stock"] < item.quantity:
         raise HTTPException(status_code=400, detail="Not enough stock available")
 
-    cart[medicine_id] = item.quantity
+    customer_cart = carts.get(current_customer, {})
+    customer_cart[medicine_id] = item.quantity
+    carts[current_customer] = customer_cart
 
     return {"message": f"Updated cart item for medicine ID {medicine_id} to quantity {item.quantity}"}
-   
+
+@app.put("/admin/orders/{order_id}/status", response_model=Order)
+def update_order_status(
+    order_id: int,
+    status_update: OrderStatusUpdate,
+    current_admin: str = Depends(get_current_admin)
+):
+    if order_id not in orders:
+        raise HTTPException(
+            status_code=404,
+            detail="Order not found"
+        )
+
+    order = orders[order_id]
+
+    current_status = order.status
+    new_status = status_update.status.value
+
+    if current_status == OrderStatus.PENDING.value:
+
+        if new_status == OrderStatus.PROCESSING.value or new_status == OrderStatus.CANCELLED.value:
+            order.status = new_status
+        else:
+            raise HTTPException(
+                status_code=400,
+                detail="Pending orders can only be Processing or Cancelled"
+            )
+
+    elif current_status == OrderStatus.PROCESSING.value:
+
+        if new_status == OrderStatus.SHIPPED.value or new_status == OrderStatus.CANCELLED.value:
+            order.status = new_status
+        else:
+            raise HTTPException(
+                status_code=400,
+                detail="Processing orders can only be Shipped or Cancelled"
+            )
+
+    elif current_status == OrderStatus.SHIPPED.value:
+
+        if new_status == OrderStatus.DELIVERED.value:
+            order.status = new_status
+        else:
+            raise HTTPException(
+                status_code=400,
+                detail="Shipped orders can only be Delivered"
+            )
+
+    elif current_status == OrderStatus.DELIVERED.value:
+
+        raise HTTPException(
+            status_code=400,
+            detail="Delivered orders cannot be changed"
+        )
+
+    elif current_status == OrderStatus.CANCELLED.value:
+
+        raise HTTPException(
+            status_code=400,
+            detail="Cancelled orders cannot be changed"
+        )
+
+    return order
+
 @app.delete("/medicines/{medicine_id}", response_model=MedicineResponse)
 def delete_medicine(medicine_id: int, current_admin: str = Depends(get_current_admin)):
     if medicine_id in medicines:
@@ -321,8 +531,10 @@ def delete_medicine(medicine_id: int, current_admin: str = Depends(get_current_a
     raise HTTPException(status_code=404, detail="Medicine not found")  
 
 @app.delete("/cart/{medicine_id}")
-def remove_from_cart(medicine_id: int):
-    if medicine_id in cart:
-        del cart[medicine_id]
+def remove_from_cart(medicine_id: int, current_customer: str = Depends(get_current_customer)):
+    customer_cart = carts.get(current_customer, {})
+    if medicine_id in customer_cart:
+        del customer_cart[medicine_id]
+        carts[current_customer] = customer_cart
         return {"message": "Item removed from cart"}
     raise HTTPException(status_code=404, detail="Item not found in cart")
