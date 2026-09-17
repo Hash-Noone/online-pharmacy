@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Payment Status - PharmaHub</title>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+
+<body>
+
+    <header>
+        <nav>
+            <h1>PharmaHub</h1>
+
+            <div>
+                <a href="index.html">Home</a>
+                <a href="medicines.html">Medicines</a>
+                <a href="login.html">Login</a>
+                <a href="cart.html">Cart 🛒</a>
+            </div>
+        </nav>
+    </header>
+
+    <main class="auth-page">
+
+        <section class="auth-card payment-status-card">
+
+            <div id="payment-spinner" class="auth-icon">⏳</div>
+
+            <h2 id="payment-title">Verifying your payment…</h2>
+            <p id="payment-message">Hang on while we confirm this with Paystack.</p>
+
+            <a id="payment-orders-link" href="orders.html" class="auth-button hidden">
+                View My Orders
+            </a>
+
+        </section>
+
+    </main>
+
+    <script src="js/nav.js"></script>
+    <script src="js/payment-callback.js"></script>
+
+</body>
+</html>

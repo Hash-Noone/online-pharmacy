@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Dashboard - PharmaHub</title>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+
+<body>
+
+    <header>
+        <nav>
+            <h1>PharmaHub</h1>
+
+            <div>
+                <a href="index.html">Home</a>
+                <a href="medicines.html">Medicines</a>
+                <a href="login.html">Login</a>
+                <a href="cart.html">Cart 🛒</a>
+            </div>
+        </nav>
+    </header>
+
+    <main class="admin-page">
+
+        <section class="admin-header">
+            <h2>Admin Dashboard</h2>
+            <p>Manage medicines, orders, and prescriptions.</p>
+        </section>
+
+        <nav class="admin-tabs">
+            <button class="admin-tab-button active" data-tab="medicines-tab">Medicines</button>
+            <button class="admin-tab-button" data-tab="orders-tab">Orders</button>
+            <button class="admin-tab-button" data-tab="prescriptions-tab">Prescriptions</button>
+            <button class="admin-tab-button" data-tab="admins-tab">Admins</button>
+        </nav>
+
+        <!-- Medicines -->
+        <section id="medicines-tab" class="admin-tab-panel">
+
+            <div class="admin-panel-header">
+                <h3>Medicines</h3>
+                <button id="show-add-medicine">+ Add Medicine</button>
+            </div>
+
+            <form id="add-medicine-form" class="admin-form hidden">
+                <div class="admin-form-grid">
+                    <input type="text" id="med-name" placeholder="Name" required>
+                    <input type="number" id="med-price" placeholder="Price" step="0.01" min="0.01" required>
+                    <input type="text" id="med-category" placeholder="Category" required>
+                    <input type="number" id="med-stock" placeholder="Stock" min="0" required>
+                    <input type="text" id="med-description" placeholder="Description" required>
+                    <label class="admin-checkbox">
+                        <input type="checkbox" id="med-prescription">
+                        Prescription required
+                    </label>
+                </div>
+                <button type="submit">Save Medicine</button>
+            </form>
+
+            <table class="admin-table">
+                <thead>
+                    <tr>
+                        <th>Name</th>
+                        <th>Category</th>
+                        <th>Price</th>
+                        <th>Stock</th>
+                        <th>Rx?</th>
+                        <th></th>
+                    </tr>
+                </thead>
+                <tbody id="medicines-table-body"></tbody>
+            </table>
+        </section>
+
+        <!-- Orders -->
+        <section id="orders-tab" class="admin-tab-panel hidden">
+            <h3>Orders</h3>
+
+            <table class="admin-table">
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>Customer</th>
+                        <th>Total</th>
+                        <th>Status</th>
+                        <th>Payment</th>
+                        <th></th>
+                    </tr>
+                </thead>
+                <tbody id="orders-table-body"></tbody>
+            </table>
+        </section>
+
+        <!-- Prescriptions -->
+        <section id="prescriptions-tab" class="admin-tab-panel hidden">
+            <h3>Prescriptions</h3>
+
+            <table class="admin-table">
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>Customer</th>
+                        <th>Medicine ID</th>
+                        <th>Doctor</th>
+                        <th>Expiry</th>
+                        <th>Status</th>
+                        <th></th>
+                    </tr>
+                </thead>
+                <tbody id="prescriptions-table-body"></tbody>
+            </table>
+        </section>
+
+        <!-- Admins -->
+        <section id="admins-tab" class="admin-tab-panel hidden">
+            <h3>Create Admin Account</h3>
+
+            <form id="add-admin-form" class="admin-form">
+                <div class="admin-form-grid">
+                    <input type="text" id="admin-username" placeholder="Username" required>
+                    <input type="password" id="admin-password" placeholder="Password (min 8 chars)" minlength="8" required>
+                </div>
+                <button type="submit">Create Admin</button>
+            </form>
+
+            <p id="admin-message" class="form-message"></p>
+        </section>
+
+    </main>
+
+    <script src="js/nav.js"></script>
+    <script src="js/admin.js"></script>
+
+</body>
+</html>

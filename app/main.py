@@ -1,7 +1,7 @@
 import os
 import uuid
 import httpx
-from fastapi import FastAPI, HTTPException, Query, Depends
+from fastapi import FastAPI, HTTPException, Query, Depends, Request
 from pydantic import BaseModel, Field, ConfigDict
 from datetime import datetime, timedelta, timezone
 from jose import JWTError, jwt
@@ -30,18 +30,17 @@ if not SECRET_KEY:
 
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 30
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="admin/login")
-customer_oauth2_scheme = OAuth2PasswordBearer(tokenUrl="login")
 
+# One shared scheme: both admins and customers authenticate through /login,
+# and the token's "role" claim (checked in get_current_admin/get_current_customer)
+# is what actually gates access — not which scheme was used.
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="login")
+
+# Only used to seed the very first admin row on first run. After that, admins
+# live in the database (see the Admin model + lifespan seeding below), and
+# more can be created via POST /admin/admins.
 ADMIN_USERNAME = os.getenv("ADMIN_USERNAME")
-_admin_password_plain = os.getenv("ADMIN_PASSWORD")
-if not ADMIN_USERNAME or not _admin_password_plain:
-    raise RuntimeError("ADMIN_USERNAME and ADMIN_PASSWORD must be set in the environment.")
-
-admin_credentials = {
-    "username": ADMIN_USERNAME,
-    "password": password_hash.hash(_admin_password_plain),
-}
+ADMIN_PASSWORD = os.getenv("ADMIN_PASSWORD")
 
 # Seed data used only to populate an empty database on first run.
 SEED_MEDICINES = [
@@ -69,6 +68,20 @@ async def lifespan(app: FastAPI):
         if db.query(models.Medicine).count() == 0:
             db.add_all(models.Medicine(**m) for m in SEED_MEDICINES)
             db.commit()
+
+        if db.query(models.Admin).count() == 0:
+            if ADMIN_USERNAME and ADMIN_PASSWORD:
+                db.add(models.Admin(
+                    username=ADMIN_USERNAME,
+                    password=password_hash.hash(ADMIN_PASSWORD),
+                ))
+                db.commit()
+            else:
+                print(
+                    "WARNING: no admin account exists yet and ADMIN_USERNAME/"
+                    "ADMIN_PASSWORD are not set. Set them in .env to seed the "
+                    "first admin on next startup."
+                )
     finally:
         db.close()
 
@@ -83,9 +96,9 @@ app.mount("/frontend", StaticFiles(directory="frontend", html=True), name="front
 # Pydantic schemas
 # ---------------------------------------------------------------------------
 
-class Admin(BaseModel):
-    username: str
-    password: str
+class AdminCreate(BaseModel):
+    username: str = Field(min_length=1, max_length=50)
+    password: str = Field(min_length=8)
 
 
 class Medicine(BaseModel):
@@ -222,30 +235,12 @@ def create_access_token(data: dict, expires_delta: timedelta | None = None):
     return jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
 
 
-def get_current_admin(token: str = Depends(oauth2_scheme)) -> str:
-    credentials_exception = HTTPException(
-        status_code=401, detail="Could not validate credentials",
-        headers={"WWW-Authenticate": "Bearer"},
-    )
-    try:
-        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
-        username = payload.get("sub")
-        role = payload.get("role")
-        if username is None or role != "admin":
-            raise credentials_exception
-    except JWTError:
-        raise credentials_exception
+def decode_token(token: str) -> dict:
+    """Decode the shared JWT and pull out the username + role claims.
 
-    if username != admin_credentials["username"]:
-        raise credentials_exception
-
-    return username
-
-
-def get_current_customer(
-    token: str = Depends(customer_oauth2_scheme),
-    db: Session = Depends(get_db),
-) -> models.Customer:
+    This is the single point where every request's token is validated,
+    regardless of whether the caller turns out to be an admin or a customer.
+    """
     credentials_exception = HTTPException(
         status_code=401, detail="Could not validate credentials",
         headers={"WWW-Authenticate": "Bearer"},
@@ -253,15 +248,47 @@ def get_current_customer(
     try:
         payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
         username: str | None = payload.get("sub")
-        role = payload.get("role")
-        if username is None or role != "customer":
+        role: str | None = payload.get("role")
+        if username is None or role not in ("admin", "customer"):
             raise credentials_exception
     except JWTError:
         raise credentials_exception
 
-    customer = db.query(models.Customer).filter(models.Customer.username == username).first()
+    return {"username": username, "role": role}
+
+
+def get_current_admin(
+    token: str = Depends(oauth2_scheme),
+    db: Session = Depends(get_db),
+) -> models.Admin:
+    payload = decode_token(token)
+    if payload["role"] != "admin":
+        raise HTTPException(status_code=403, detail="Admin access required")
+
+    admin = db.query(models.Admin).filter(models.Admin.username == payload["username"]).first()
+    if not admin:
+        raise HTTPException(
+            status_code=401, detail="Could not validate credentials",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+
+    return admin
+
+
+def get_current_customer(
+    token: str = Depends(oauth2_scheme),
+    db: Session = Depends(get_db),
+) -> models.Customer:
+    payload = decode_token(token)
+    if payload["role"] != "customer":
+        raise HTTPException(status_code=403, detail="Customer access required")
+
+    customer = db.query(models.Customer).filter(models.Customer.username == payload["username"]).first()
     if not customer:
-        raise credentials_exception
+        raise HTTPException(
+            status_code=401, detail="Could not validate credentials",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
 
     return customer
 
@@ -351,12 +378,12 @@ def get_medicine(medicine_id: int, db: Session = Depends(get_db)):
 
 
 @app.get("/admin/orders", response_model=list[Order])
-def get_orders(current_admin: str = Depends(get_current_admin), db: Session = Depends(get_db)):
+def get_orders(current_admin: models.Admin = Depends(get_current_admin), db: Session = Depends(get_db)):
     return [order_to_schema(o) for o in db.query(models.Order).all()]
 
 
 @app.get("/orders/{order_id}", response_model=Order)
-def get_order(order_id: int, current_admin: str = Depends(get_current_admin), db: Session = Depends(get_db)):
+def get_order(order_id: int, current_admin: models.Admin = Depends(get_current_admin), db: Session = Depends(get_db)):
     order = db.get(models.Order, order_id)
     if order:
         return order_to_schema(order)
@@ -375,7 +402,7 @@ def get_customer_orders(
 @app.post("/medicines", response_model=MedicineResponse)
 def add_medicine(
     medicine: Medicine,
-    current_admin: str = Depends(get_current_admin),
+    current_admin: models.Admin = Depends(get_current_admin),
     db: Session = Depends(get_db),
 ):
     db_medicine = models.Medicine(**medicine.model_dump())
@@ -481,25 +508,62 @@ def checkout(
 
 
 @app.post("/login")
-def customer_login(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depends(get_db)):
+def login(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = Depends(get_db)):
+    """Single login endpoint for both admins and customers.
+
+    Admin usernames and customer usernames live in separate tables, so we
+    just try admin first, then customer. The issued token carries a "role"
+    claim that get_current_admin/get_current_customer check afterwards.
+    """
+    admin = db.query(models.Admin).filter(models.Admin.username == form_data.username).first()
+    if admin and password_hash.verify(form_data.password, admin.password):
+        access_token = create_access_token(data={"sub": admin.username, "role": "admin"})
+        return {"access_token": access_token, "token_type": "bearer", "role": "admin"}
+
     customer = db.query(models.Customer).filter(models.Customer.username == form_data.username).first()
+    if customer and password_hash.verify(form_data.password, customer.password):
+        access_token = create_access_token(data={"sub": customer.username, "role": "customer"})
+        return {"access_token": access_token, "token_type": "bearer", "role": "customer"}
 
-    if not customer or not password_hash.verify(form_data.password, customer.password):
-        raise HTTPException(status_code=401, detail="Invalid username or password")
-
-    access_token = create_access_token(data={"sub": form_data.username, "role": "customer"})
-    return {"access_token": access_token, "token_type": "bearer"}
+    raise HTTPException(status_code=401, detail="Invalid username or password")
 
 
-@app.post("/admin/login")
-def admin_login(form_data: OAuth2PasswordRequestForm = Depends()):
-    if form_data.username == admin_credentials["username"] and password_hash.verify(
-        form_data.password, admin_credentials["password"]
-    ):
-        access_token = create_access_token(data={"sub": form_data.username, "role": "admin"})
-        return {"access_token": access_token, "token_type": "bearer"}
+@app.post("/admin/admins")
+def create_admin(
+    admin: AdminCreate,
+    current_admin: models.Admin = Depends(get_current_admin),
+    db: Session = Depends(get_db),
+):
+    """Lets an existing admin provision another admin account in the database."""
+    existing = db.query(models.Admin).filter(models.Admin.username == admin.username).first()
+    if existing:
+        raise HTTPException(status_code=400, detail="Admin username already exists")
 
-    raise HTTPException(status_code=401, detail="Invalid credentials")
+    db_admin = models.Admin(username=admin.username, password=password_hash.hash(admin.password))
+    db.add(db_admin)
+    db.commit()
+
+    return {"message": f"Admin '{db_admin.username}' created"}
+
+
+@app.get("/admin/prescriptions", response_model=list[Prescription])
+def get_all_prescriptions(
+    current_admin: models.Admin = Depends(get_current_admin),
+    db: Session = Depends(get_db),
+):
+    prescriptions = db.query(models.Prescription).all()
+    return [
+        Prescription(
+            id=p.id,
+            customer_username=p.customer.username,
+            medicine_id=p.medicine_id,
+            doctor_name=p.doctor_name,
+            prescription_date=p.prescription_date,
+            expiry_date=p.expiry_date,
+            status=PrescriptionStatus(p.status),
+        )
+        for p in prescriptions
+    ]
 
 
 @app.post("/register", response_model=CustomerResponse)
@@ -567,6 +631,7 @@ def submit_prescription(
 @app.post("/orders/{order_id}/payment")
 async def process_payment(
     order_id: int,
+    request: Request,
     current_customer: models.Customer = Depends(get_current_customer),
     db: Session = Depends(get_db),
 ):
@@ -582,6 +647,11 @@ async def process_payment(
     order.payment_reference = reference
     db.commit()
 
+    # Paystack redirects the shopper here after they pay, appending its own
+    # ?reference=...&trxref=... query params — we tack on order_id ourselves
+    # so payment-callback.html knows which order to verify.
+    callback_url = f"{str(request.base_url).rstrip('/')}/frontend/payment-callback.html?order_id={order_id}"
+
     async with httpx.AsyncClient() as client:
         response = await client.post(
             "https://api.paystack.co/transaction/initialize",
@@ -590,6 +660,7 @@ async def process_payment(
                 "email": current_customer.email,
                 "amount": int(order.total_price * 100),
                 "reference": reference,
+                "callback_url": callback_url,
             },
         )
 
@@ -650,7 +721,7 @@ async def verify_payment(
 def update_medicine(
     medicine_id: int,
     medicine: MedicineUpdate,
-    current_admin: str = Depends(get_current_admin),
+    current_admin: models.Admin = Depends(get_current_admin),
     db: Session = Depends(get_db),
 ):
     db_medicine = db.get(models.Medicine, medicine_id)
@@ -696,7 +767,7 @@ def update_cart_item(
 def update_order_status(
     order_id: int,
     status_update: OrderStatusUpdate,
-    current_admin: str = Depends(get_current_admin),
+    current_admin: models.Admin = Depends(get_current_admin),
     db: Session = Depends(get_db),
 ):
     order = db.get(models.Order, order_id)
@@ -731,7 +802,7 @@ def update_order_status(
 def update_prescription_status(
     prescription_id: int,
     status_update: PrescriptionStatusUpdate,
-    current_admin: str = Depends(get_current_admin),
+    current_admin: models.Admin = Depends(get_current_admin),
     db: Session = Depends(get_db),
 ):
     prescription = db.get(models.Prescription, prescription_id)
@@ -760,7 +831,7 @@ def update_prescription_status(
 
 
 @app.delete("/medicines/{medicine_id}", response_model=MedicineResponse)
-def delete_medicine(medicine_id: int, current_admin: str = Depends(get_current_admin), db: Session = Depends(get_db)):
+def delete_medicine(medicine_id: int, current_admin: models.Admin = Depends(get_current_admin), db: Session = Depends(get_db)):
     medicine = db.get(models.Medicine, medicine_id)
     if not medicine:
         raise HTTPException(status_code=404, detail="Medicine not found")

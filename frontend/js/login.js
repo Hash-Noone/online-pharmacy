@@ -31,11 +31,18 @@ loginForm.addEventListener("submit", function(event) {
         }
 
         localStorage.setItem("access_token", data.access_token);
+        localStorage.setItem("role", data.role);
 
         document.getElementById("login-message").textContent =
             "Login successful!";
 
         loginForm.reset();
+
+        setTimeout(() => {
+            window.location.href = data.role === "admin"
+                ? "admin.html"
+                : "medicines.html";
+        }, 600);
 
     })
     .catch(error => {

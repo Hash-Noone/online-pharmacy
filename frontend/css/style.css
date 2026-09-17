@@ -312,3 +312,363 @@ footer {
 .secondary-button:hover {
     background-color: #f0f7ff !important;
 }
+/* Admin Dashboard */
+
+.hidden {
+    display: none !important;
+}
+
+.admin-page {
+    max-width: 1100px;
+    margin: 0 auto;
+    padding: 50px 30px 80px;
+}
+
+.admin-header {
+    margin-bottom: 25px;
+}
+
+.admin-header h2 {
+    font-size: 32px;
+    margin-bottom: 8px;
+}
+
+.admin-header p {
+    color: #666;
+}
+
+.admin-tabs {
+    display: flex;
+    gap: 10px;
+    border-bottom: 1px solid #e5e7eb;
+    margin-bottom: 25px;
+}
+
+.admin-tab-button {
+    background: none;
+    border: none;
+    padding: 12px 16px;
+    font-size: 15px;
+    font-weight: 600;
+    color: #666;
+    cursor: pointer;
+    border-bottom: 2px solid transparent;
+}
+
+.admin-tab-button.active {
+    color: #1769aa;
+    border-bottom-color: #1769aa;
+}
+
+.admin-panel-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 18px;
+}
+
+.admin-panel-header h3 {
+    font-size: 22px;
+}
+
+.admin-panel-header button,
+.admin-form button,
+#logout-link {
+    background-color: #1769aa;
+    color: white;
+    border: none;
+    padding: 10px 16px;
+    border-radius: 7px;
+    cursor: pointer;
+    font-size: 14px;
+}
+
+#logout-link {
+    text-decoration: none;
+    display: inline-block;
+}
+
+.admin-form {
+    background: white;
+    border: 1px solid #e5e7eb;
+    border-radius: 10px;
+    padding: 20px;
+    margin-bottom: 20px;
+}
+
+.admin-form-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+    gap: 12px;
+    margin-bottom: 14px;
+}
+
+.admin-form input {
+    padding: 10px 12px;
+    border: 1px solid #d1d5db;
+    border-radius: 6px;
+    font-size: 14px;
+}
+
+.admin-checkbox {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 14px;
+}
+
+.admin-table {
+    width: 100%;
+    border-collapse: collapse;
+    background: white;
+    border-radius: 10px;
+    overflow: hidden;
+}
+
+.admin-table th,
+.admin-table td {
+    text-align: left;
+    padding: 12px 14px;
+    border-bottom: 1px solid #e5e7eb;
+    font-size: 14px;
+}
+
+.admin-table th {
+    background-color: #f0f7ff;
+    color: #1769aa;
+    text-transform: uppercase;
+    font-size: 12px;
+}
+
+.admin-table button,
+.admin-table select {
+    padding: 6px 10px;
+    border-radius: 6px;
+    border: 1px solid #d1d5db;
+    font-size: 13px;
+    cursor: pointer;
+}
+
+.admin-table .delete-medicine,
+.admin-table .reject-prescription {
+    background-color: #fdecea;
+    border-color: #f5c2c0;
+    color: #b3261e;
+}
+
+.admin-table .approve-prescription {
+    background-color: #e6f4ea;
+    border-color: #b7dfc1;
+    color: #1e7d34;
+    margin-right: 6px;
+}
+
+/* Cart */
+
+#cart-items {
+    max-width: 800px;
+    margin: 0 auto 20px;
+}
+
+.cart-item {
+    background: white;
+    border: 1px solid #e5e7eb;
+    border-radius: 10px;
+    padding: 18px 22px;
+    margin-bottom: 14px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 12px;
+}
+
+.cart-item-info h3 {
+    font-size: 18px;
+    margin-bottom: 4px;
+}
+
+.cart-item-info p {
+    color: #666;
+    font-size: 14px;
+}
+
+.cart-item-controls {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+}
+
+.cart-quantity-input {
+    width: 60px;
+    padding: 8px;
+    border: 1px solid #d1d5db;
+    border-radius: 6px;
+    text-align: center;
+}
+
+.cart-remove {
+    background: #fdecea;
+    border: 1px solid #f5c2c0;
+    color: #b3261e;
+    padding: 8px 12px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 13px;
+}
+
+.cart-empty {
+    text-align: center;
+    color: #666;
+    padding: 40px 0;
+}
+
+#cart-total {
+    max-width: 800px;
+    margin: 0 auto 20px;
+    text-align: right;
+    font-size: 20px;
+    font-weight: bold;
+}
+
+#checkout-button {
+    display: block;
+    max-width: 800px;
+    width: 100%;
+    margin: 0 auto;
+    padding: 15px;
+    border: none;
+    border-radius: 8px;
+    background-color: #1769aa;
+    color: white;
+    font-size: 16px;
+    font-weight: 600;
+    cursor: pointer;
+}
+
+#checkout-button:disabled {
+    background-color: #a9c6db;
+    cursor: not-allowed;
+}
+
+main > section {
+    max-width: 900px;
+    margin: 0 auto;
+    padding: 50px 20px;
+}
+
+/* Orders */
+
+.orders-page {
+    max-width: 800px;
+    margin: 0 auto;
+    padding: 50px 30px 80px;
+}
+
+.orders-list {
+    display: flex;
+    flex-direction: column;
+    gap: 18px;
+}
+
+.order-card {
+    background: white;
+    border: 1px solid #e5e7eb;
+    border-radius: 12px;
+    padding: 22px;
+}
+
+.order-card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 12px;
+}
+
+.order-card-header h3 {
+    font-size: 18px;
+}
+
+.order-status {
+    color: #666;
+    font-size: 13px;
+}
+
+.payment-badge {
+    padding: 5px 12px;
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: 600;
+    text-transform: uppercase;
+}
+
+.badge-pending {
+    background: #fff4e0;
+    color: #a15c00;
+}
+
+.badge-paid {
+    background: #e6f4ea;
+    color: #1e7d34;
+}
+
+.badge-failed {
+    background: #fdecea;
+    color: #b3261e;
+}
+
+.badge-refunded {
+    background: #eaf0fb;
+    color: #1769aa;
+}
+
+.order-items-list {
+    list-style: none;
+    color: #444;
+    font-size: 14px;
+    margin-bottom: 16px;
+}
+
+.order-items-list li {
+    padding: 4px 0;
+}
+
+.order-card-footer {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding-top: 14px;
+    border-top: 1px solid #eee;
+}
+
+.order-card-footer .pay-now {
+    background-color: #1769aa;
+    color: white;
+    border: none;
+    padding: 10px 18px;
+    border-radius: 7px;
+    cursor: pointer;
+    font-size: 14px;
+}
+
+/* Payment status page */
+
+.payment-status-card {
+    text-align: center;
+}
+
+.payment-status-card .auth-icon {
+    font-size: 50px;
+}
+
+a.auth-button {
+    display: inline-block;
+    text-decoration: none;
+    text-align: center;
+    box-sizing: border-box;
+}
+
+.medicine-bottom button:disabled {
+    background-color: #aaa;
+    cursor: not-allowed;
+}
