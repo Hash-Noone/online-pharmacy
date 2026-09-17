@@ -1,50 +1,112 @@
-// Runs on every page to keep the top nav in sync with who's logged in.
+// Runs on every page and updates the navigation
+// based on the user's login status.
+
 document.addEventListener("DOMContentLoaded", function () {
+
     const token = localStorage.getItem("access_token");
     const role = localStorage.getItem("role");
+
     const navLinks = document.querySelector("nav div");
 
     if (!navLinks) {
         return;
     }
 
+    // Remove any links that nav.js controls.
+    // This prevents duplicates.
+    navLinks.querySelectorAll("#orders-link, #logout-link, #admin-link").forEach(link => {
+        link.remove();
+    });
+
     const loginLink = navLinks.querySelector('a[href="login.html"]');
+    const registerLink = navLinks.querySelector('a[href="register.html"]');
+    const cartLink = navLinks.querySelector('a[href="cart.html"]');
+
+    // -------------------------
+    // ADMIN
+    // -------------------------
 
     if (token && role === "admin") {
-        // Admins don't need the customer-facing cart link, but do need a
-        // way back to their dashboard.
-        const cartLink = navLinks.querySelector('a[href="cart.html"]');
+
+        // Admin doesn't need Register.
+        if (registerLink) {
+            registerLink.remove();
+        }
+
+        // Admin doesn't need customer cart.
         if (cartLink) {
             cartLink.remove();
         }
 
+        // Change Login to Admin Dashboard.
         if (loginLink) {
             loginLink.textContent = "Admin Dashboard";
-            loginLink.setAttribute("href", "admin.html");
+            loginLink.href = "admin.html";
+            loginLink.id = "admin-link";
+        } else {
+            const adminLink = document.createElement("a");
+
+            adminLink.href = "admin.html";
+            adminLink.id = "admin-link";
+            adminLink.textContent = "Admin Dashboard";
+
+            navLinks.appendChild(adminLink);
         }
 
         addLogoutLink(navLinks);
-    } else if (token && role === "customer") {
+
+        return;
+    }
+
+    // -------------------------
+    // CUSTOMER
+    // -------------------------
+
+    if (token && role === "customer") {
+
+        // Customer doesn't need Register.
+        if (registerLink) {
+            registerLink.remove();
+        }
+
+        // Customer doesn't need Login.
         if (loginLink) {
             loginLink.remove();
         }
+
+        // Add My Orders.
         addOrdersLink(navLinks);
+
+        // Keep Cart visible.
+        // Add Logout.
         addLogoutLink(navLinks);
+
+        return;
     }
-    // Not logged in: leave the nav as-is (Login link visible).
+
+    // -------------------------
+    // NOT LOGGED IN
+    // -------------------------
+
+    // Leave the normal navigation unchanged.
 });
 
+
 function addOrdersLink(navLinks) {
+
+    // Don't create a duplicate.
     if (navLinks.querySelector("#orders-link")) {
         return;
     }
 
     const ordersLink = document.createElement("a");
+
     ordersLink.href = "orders.html";
     ordersLink.id = "orders-link";
     ordersLink.textContent = "My Orders";
 
     const cartLink = navLinks.querySelector('a[href="cart.html"]');
+
     if (cartLink) {
         navLinks.insertBefore(ordersLink, cartLink);
     } else {
@@ -52,19 +114,27 @@ function addOrdersLink(navLinks) {
     }
 }
 
+
 function addLogoutLink(navLinks) {
+
+    // Don't create a duplicate.
     if (navLinks.querySelector("#logout-link")) {
         return;
     }
 
     const logoutLink = document.createElement("a");
+
     logoutLink.href = "#";
     logoutLink.id = "logout-link";
     logoutLink.textContent = "Logout";
+
     logoutLink.addEventListener("click", function (event) {
+
         event.preventDefault();
+
         localStorage.removeItem("access_token");
         localStorage.removeItem("role");
+
         window.location.href = "login.html";
     });
 
