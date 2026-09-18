@@ -10,6 +10,7 @@ from fastapi.security import OAuth2PasswordBearer, OAuth2PasswordRequestForm
 from pwdlib import PasswordHash
 from dotenv import load_dotenv
 from sqlalchemy.orm import Session
+from sqlalchemy import func
 from contextlib import asynccontextmanager
 from fastapi.staticfiles import StaticFiles
 
@@ -42,18 +43,37 @@ oauth2_scheme = OAuth2PasswordBearer(tokenUrl="login")
 ADMIN_USERNAME = os.getenv("ADMIN_USERNAME")
 ADMIN_PASSWORD = os.getenv("ADMIN_PASSWORD")
 
+# PharmaHub currently sells over-the-counter medicines only (no prescription
+# workflow). VAT and a flat delivery fee are applied at checkout.
+TAX_RATE = 0.075  # 7.5% VAT
+DELIVERY_FEE = 1500.0  # flat delivery fee, in Naira
+LOW_STOCK_THRESHOLD = 10
+
+# The number (with country code, no "+" or spaces) that the "Chat with a
+# Pharmacist" button opens on WhatsApp. Replace with your real support line.
+WHATSAPP_NUMBER = os.getenv("WHATSAPP_NUMBER", "2348000000000")
+
 # Seed data used only to populate an empty database on first run.
+# OTC (over-the-counter) medicines only — no prescription required.
 SEED_MEDICINES = [
     {"name": "Paracetamol", "price": 500, "description": "Pain and fever relief",
-     "stock": 100, "category": "Pain Relief", "prescription_required": False},
-    {"name": "Amoxicillin", "price": 3000, "description": "Antibiotic",
-     "stock": 50, "category": "Antibiotics", "prescription_required": True},
+     "stock": 100, "category": "Pain Relief",
+     "image_url": "https://picsum.photos/seed/paracetamol/400/300"},
     {"name": "Cetirizine", "price": 200, "description": "Allergy relief",
-     "stock": 75, "category": "Allergy", "prescription_required": False},
+     "stock": 75, "category": "Allergy",
+     "image_url": "https://picsum.photos/seed/cetirizine/400/300"},
     {"name": "Ibuprofen", "price": 400, "description": "Pain and inflammation relief",
-     "stock": 60, "category": "Pain Relief", "prescription_required": False},
-    {"name": "Metformin", "price": 1500, "description": "Diabetes management",
-     "stock": 40, "category": "Diabetes", "prescription_required": True},
+     "stock": 60, "category": "Pain Relief",
+     "image_url": "https://picsum.photos/seed/ibuprofen/400/300"},
+    {"name": "Vitamin C", "price": 800, "description": "Immune support supplement",
+     "stock": 90, "category": "Vitamins",
+     "image_url": "https://picsum.photos/seed/vitaminc/400/300"},
+    {"name": "Oral Rehydration Salts", "price": 350, "description": "Rehydration for diarrhea and fluid loss",
+     "stock": 120, "category": "First Aid",
+     "image_url": "https://picsum.photos/seed/ors/400/300"},
+    {"name": "Cough Syrup", "price": 900, "description": "Relief from cough and throat irritation",
+     "stock": 45, "category": "Cold & Flu",
+     "image_url": "https://picsum.photos/seed/coughsyrup/400/300"},
 ]
 
 
@@ -107,7 +127,7 @@ class Medicine(BaseModel):
     description: str = Field(max_length=200)
     stock: int = Field(ge=0)
     category: str = Field(min_length=1, max_length=50)
-    prescription_required: bool = False
+    image_url: str | None = Field(default=None, max_length=500)
 
 
 class MedicineUpdate(BaseModel):
@@ -116,7 +136,7 @@ class MedicineUpdate(BaseModel):
     description: str | None = Field(default=None, max_length=200)
     stock: int | None = Field(default=None, ge=0)
     category: str | None = Field(default=None, min_length=1, max_length=50)
-    prescription_required: bool | None = Field(default=None)
+    image_url: str | None = Field(default=None, max_length=500)
 
 
 class MedicineResponse(BaseModel):
@@ -128,7 +148,7 @@ class MedicineResponse(BaseModel):
     description: str
     stock: int
     category: str
-    prescription_required: bool = False
+    image_url: str | None = None
 
 
 class CartItem(BaseModel):
@@ -163,10 +183,45 @@ class Order(BaseModel):
     id: int
     customer_username: str
     items: list[OrderItem]
+    subtotal: float
+    tax_amount: float
+    delivery_fee: float
     total_price: float
+    delivery_address: str
     status: str
     payment_status: PaymentStatus = PaymentStatus.PENDING
     payment_reference: str | None = None
+
+
+class CheckoutRequest(BaseModel):
+    delivery_address: str = Field(min_length=5, max_length=255)
+
+
+class PeriodStats(BaseModel):
+    orders: int
+    revenue: float
+
+
+class LowStockMedicine(BaseModel):
+    id: int
+    name: str
+    stock: int
+    category: str
+
+
+class BestSellingMedicine(BaseModel):
+    id: int
+    name: str
+    quantity_sold: int
+    revenue: float
+
+
+class AnalyticsSummary(BaseModel):
+    today: PeriodStats
+    this_week: PeriodStats
+    this_month: PeriodStats
+    low_stock: list[LowStockMedicine]
+    best_sellers: list[BestSellingMedicine]
 
 
 class OrderStatus(str, Enum):
@@ -192,36 +247,6 @@ class CustomerResponse(BaseModel):
 
     username: str
     email: str
-
-
-class PrescriptionStatus(str, Enum):
-    PENDING = "Pending"
-    APPROVED = "Approved"
-    REJECTED = "Rejected"
-    EXPIRED = "Expired"
-
-
-class Prescription(BaseModel):
-    model_config = ConfigDict(from_attributes=True)
-
-    id: int
-    customer_username: str
-    medicine_id: int
-    doctor_name: str
-    prescription_date: datetime
-    expiry_date: datetime
-    status: PrescriptionStatus
-
-
-class PrescriptionCreate(BaseModel):
-    medicine_id: int
-    doctor_name: str
-    prescription_date: datetime
-    expiry_date: datetime
-
-
-class PrescriptionStatusUpdate(BaseModel):
-    status: PrescriptionStatus
 
 
 # ---------------------------------------------------------------------------
@@ -298,7 +323,11 @@ def order_to_schema(order: models.Order) -> Order:
         id=order.id,
         customer_username=order.customer.username,
         items=[OrderItem.model_validate(i) for i in order.items],
+        subtotal=order.subtotal,
+        tax_amount=order.tax_amount,
+        delivery_fee=order.delivery_fee,
         total_price=order.total_price,
+        delivery_address=order.delivery_address,
         status=order.status,
         payment_status=PaymentStatus(order.payment_status),
         payment_reference=order.payment_reference,
@@ -312,6 +341,12 @@ def order_to_schema(order: models.Order) -> Order:
 @app.get("/")
 def home():
     return {"message": "Welcome to PharmaHub"}
+
+
+@app.get("/config")
+def get_public_config():
+    """Public, non-secret config the frontend needs (e.g. WhatsApp support number)."""
+    return {"whatsapp_number": WHATSAPP_NUMBER}
 
 
 @app.get("/medicines", response_model=list[MedicineResponse])
@@ -366,7 +401,19 @@ def get_cart(
         })
         total_price += line_total
 
-    return {"cart": cart_items, "total_price": total_price}
+    subtotal = total_price
+    tax_amount = round(subtotal * TAX_RATE, 2) if cart_items else 0.0
+    delivery_fee = DELIVERY_FEE if cart_items else 0.0
+    grand_total = subtotal + tax_amount + delivery_fee
+
+    return {
+        "cart": cart_items,
+        "subtotal": subtotal,
+        "tax_amount": tax_amount,
+        "tax_rate": TAX_RATE,
+        "delivery_fee": delivery_fee,
+        "grand_total": grand_total,
+    }
 
 
 @app.get("/medicines/{medicine_id}", response_model=MedicineResponse)
@@ -380,6 +427,61 @@ def get_medicine(medicine_id: int, db: Session = Depends(get_db)):
 @app.get("/admin/orders", response_model=list[Order])
 def get_orders(current_admin: models.Admin = Depends(get_current_admin), db: Session = Depends(get_db)):
     return [order_to_schema(o) for o in db.query(models.Order).all()]
+
+
+@app.get("/admin/analytics", response_model=AnalyticsSummary)
+def get_analytics(
+    current_admin: models.Admin = Depends(get_current_admin),
+    db: Session = Depends(get_db),
+):
+    now = datetime.now(timezone.utc)
+    today_start = now.replace(hour=0, minute=0, second=0, microsecond=0)
+    week_start = today_start - timedelta(days=today_start.weekday())  # Monday
+    month_start = today_start.replace(day=1)
+
+    def period_stats(since: datetime) -> PeriodStats:
+        # Revenue counts only orders that have actually been paid for.
+        row = (
+            db.query(func.count(models.Order.id), func.coalesce(func.sum(models.Order.total_price), 0.0))
+            .filter(models.Order.created_at >= since, models.Order.payment_status == PaymentStatus.PAID.value)
+            .one()
+        )
+        return PeriodStats(orders=row[0] or 0, revenue=float(row[1] or 0.0))
+
+    low_stock = [
+        LowStockMedicine(id=m.id, name=m.name, stock=m.stock, category=m.category)
+        for m in db.query(models.Medicine)
+        .filter(models.Medicine.stock <= LOW_STOCK_THRESHOLD)
+        .order_by(models.Medicine.stock.asc())
+        .all()
+    ]
+
+    best_sellers_rows = (
+        db.query(
+            models.OrderItem.medicine_id,
+            models.OrderItem.name,
+            func.sum(models.OrderItem.quantity).label("quantity_sold"),
+            func.sum(models.OrderItem.total_price).label("revenue"),
+        )
+        .join(models.Order, models.Order.id == models.OrderItem.order_id)
+        .filter(models.Order.status != OrderStatus.CANCELLED.value)
+        .group_by(models.OrderItem.medicine_id, models.OrderItem.name)
+        .order_by(func.sum(models.OrderItem.quantity).desc())
+        .limit(5)
+        .all()
+    )
+    best_sellers = [
+        BestSellingMedicine(id=r.medicine_id, name=r.name, quantity_sold=int(r.quantity_sold), revenue=float(r.revenue))
+        for r in best_sellers_rows
+    ]
+
+    return AnalyticsSummary(
+        today=period_stats(today_start),
+        this_week=period_stats(week_start),
+        this_month=period_stats(month_start),
+        low_stock=low_stock,
+        best_sellers=best_sellers,
+    )
 
 
 @app.get("/orders/{order_id}", response_model=Order)
@@ -448,6 +550,7 @@ def add_to_cart(
 
 @app.post("/checkout")
 def checkout(
+    checkout_request: CheckoutRequest,
     current_customer: models.Customer = Depends(get_current_customer),
     db: Session = Depends(get_db),
 ):
@@ -455,9 +558,8 @@ def checkout(
     if not cart_items:
         raise HTTPException(status_code=400, detail="Cart is empty")
 
-    now = datetime.now(timezone.utc)
     order_items_data = []
-    total_price = 0.0
+    subtotal = 0.0
 
     for cart_item in cart_items:
         medicine = cart_item.medicine
@@ -469,29 +571,24 @@ def checkout(
                 detail=f"Not enough stock for {medicine.name}. Available: {medicine.stock}, Requested: {quantity}",
             )
 
-        if medicine.prescription_required:
-            prescription = db.query(models.Prescription).filter(
-                models.Prescription.customer_id == current_customer.id,
-                models.Prescription.medicine_id == medicine.id,
-                models.Prescription.status == PrescriptionStatus.APPROVED.value,
-                models.Prescription.expiry_date > now,
-            ).first()
-            if not prescription:
-                raise HTTPException(
-                    status_code=400,
-                    detail=f"Prescription required for {medicine.name} and not found, not approved, or expired",
-                )
-
         line_total = medicine.price * quantity
-        total_price += line_total
+        subtotal += line_total
         order_items_data.append(models.OrderItem(
             medicine_id=medicine.id, name=medicine.name, quantity=quantity,
             price=medicine.price, total_price=line_total,
         ))
 
+    tax_amount = round(subtotal * TAX_RATE, 2)
+    delivery_fee = DELIVERY_FEE
+    total_price = subtotal + tax_amount + delivery_fee
+
     order = models.Order(
         customer_id=current_customer.id,
+        subtotal=subtotal,
+        tax_amount=tax_amount,
+        delivery_fee=delivery_fee,
         total_price=total_price,
+        delivery_address=checkout_request.delivery_address,
         status=OrderStatus.PENDING.value,
         items=order_items_data,
     )
@@ -546,26 +643,6 @@ def create_admin(
     return {"message": f"Admin '{db_admin.username}' created"}
 
 
-@app.get("/admin/prescriptions", response_model=list[Prescription])
-def get_all_prescriptions(
-    current_admin: models.Admin = Depends(get_current_admin),
-    db: Session = Depends(get_db),
-):
-    prescriptions = db.query(models.Prescription).all()
-    return [
-        Prescription(
-            id=p.id,
-            customer_username=p.customer.username,
-            medicine_id=p.medicine_id,
-            doctor_name=p.doctor_name,
-            prescription_date=p.prescription_date,
-            expiry_date=p.expiry_date,
-            status=PrescriptionStatus(p.status),
-        )
-        for p in prescriptions
-    ]
-
-
 @app.post("/register", response_model=CustomerResponse)
 def register_customer(customer: Customer, db: Session = Depends(get_db)):
     existing = db.query(models.Customer).filter(
@@ -584,48 +661,6 @@ def register_customer(customer: Customer, db: Session = Depends(get_db)):
     db.refresh(db_customer)
 
     return db_customer
-
-
-@app.post("/prescriptions", response_model=Prescription)
-def submit_prescription(
-    prescription: PrescriptionCreate,
-    current_customer: models.Customer = Depends(get_current_customer),
-    db: Session = Depends(get_db),
-):
-    medicine = db.get(models.Medicine, prescription.medicine_id)
-    if not medicine:
-        raise HTTPException(status_code=404, detail="Medicine not found")
-
-    if not medicine.prescription_required:
-        raise HTTPException(status_code=400, detail="Prescription not required for this medicine")
-
-    if prescription.prescription_date > datetime.now(timezone.utc):
-        raise HTTPException(status_code=400, detail="Prescription date cannot be in the future")
-
-    if prescription.expiry_date <= prescription.prescription_date:
-        raise HTTPException(status_code=400, detail="Expiry date must be after prescription date")
-
-    db_prescription = models.Prescription(
-        customer_id=current_customer.id,
-        medicine_id=prescription.medicine_id,
-        doctor_name=prescription.doctor_name,
-        prescription_date=prescription.prescription_date,
-        expiry_date=prescription.expiry_date,
-        status=PrescriptionStatus.PENDING.value,
-    )
-    db.add(db_prescription)
-    db.commit()
-    db.refresh(db_prescription)
-
-    return Prescription(
-        id=db_prescription.id,
-        customer_username=current_customer.username,
-        medicine_id=db_prescription.medicine_id,
-        doctor_name=db_prescription.doctor_name,
-        prescription_date=db_prescription.prescription_date,
-        expiry_date=db_prescription.expiry_date,
-        status=PrescriptionStatus(db_prescription.status),
-    )
 
 
 @app.post("/orders/{order_id}/payment")
@@ -797,38 +832,6 @@ def update_order_status(
     db.refresh(order)
 
     return order_to_schema(order)
-
-@app.put("/admin/prescriptions/{prescription_id}/status", response_model=Prescription)
-def update_prescription_status(
-    prescription_id: int,
-    status_update: PrescriptionStatusUpdate,
-    current_admin: models.Admin = Depends(get_current_admin),
-    db: Session = Depends(get_db),
-):
-    prescription = db.get(models.Prescription, prescription_id)
-    if not prescription:
-        raise HTTPException(status_code=404, detail="Prescription not found")
-
-    if prescription.status != PrescriptionStatus.PENDING.value:
-        raise HTTPException(status_code=400, detail="Only pending prescriptions can be updated")
-
-    if status_update.status == PrescriptionStatus.EXPIRED:
-        raise HTTPException(status_code=400, detail="Expired status is handled automatically")
-
-    prescription.status = status_update.status.value
-    db.commit()
-    db.refresh(prescription)
-
-    return Prescription(
-        id=prescription.id,
-        customer_username=prescription.customer.username,
-        medicine_id=prescription.medicine_id,
-        doctor_name=prescription.doctor_name,
-        prescription_date=prescription.prescription_date,
-        expiry_date=prescription.expiry_date,
-        status=PrescriptionStatus(prescription.status),
-    )
-
 
 @app.delete("/medicines/{medicine_id}", response_model=MedicineResponse)
 def delete_medicine(medicine_id: int, current_admin: models.Admin = Depends(get_current_admin), db: Session = Depends(get_db)):

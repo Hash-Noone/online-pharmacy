@@ -31,7 +31,29 @@
                 <!-- JavaScript will put cart items here -->
             </div>
 
-            <div id="cart-total"></div>
+            <div id="delivery-address-section" class="delivery-address-group hidden">
+                <label for="delivery-address">Delivery Address</label>
+                <textarea id="delivery-address" placeholder="Enter the address where your order should be delivered" required></textarea>
+            </div>
+
+            <div id="cart-summary" class="cart-summary hidden">
+                <div class="cart-summary-row">
+                    <span>Subtotal</span>
+                    <span id="summary-subtotal"></span>
+                </div>
+                <div class="cart-summary-row">
+                    <span id="summary-tax-label">Tax</span>
+                    <span id="summary-tax"></span>
+                </div>
+                <div class="cart-summary-row">
+                    <span>Delivery Fee</span>
+                    <span id="summary-delivery"></span>
+                </div>
+                <div class="cart-summary-row total">
+                    <span>Total</span>
+                    <span id="summary-grand-total"></span>
+                </div>
+            </div>
 
             <button id="checkout-button">
                 Checkout

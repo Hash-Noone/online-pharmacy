@@ -3,6 +3,8 @@
 
 document.addEventListener("DOMContentLoaded", function () {
 
+    addWhatsAppButton();
+
     const token = localStorage.getItem("access_token");
     const role = localStorage.getItem("role");
 
@@ -90,6 +92,42 @@ document.addEventListener("DOMContentLoaded", function () {
 
     // Leave the normal navigation unchanged.
 });
+
+
+// Floating "Chat with a Pharmacist" button, shown on every page.
+// Pulls the support number from /config so it can be changed server-side
+// without touching the frontend.
+function addWhatsAppButton() {
+
+    if (document.getElementById("whatsapp-float")) {
+        return;
+    }
+
+    const link = document.createElement("a");
+    link.id = "whatsapp-float";
+    link.className = "whatsapp-float";
+    link.target = "_blank";
+    link.rel = "noopener";
+    link.innerHTML = `<span class="whatsapp-icon">💬</span><span class="whatsapp-label">Chat with a Pharmacist</span>`;
+
+    // Sensible default while /config is loading (or if it fails).
+    link.href = "https://wa.me/2348000000000?text=" +
+        encodeURIComponent("Hi, I have a question about a medicine on PharmaHub.");
+
+    document.body.appendChild(link);
+
+    fetch("/config")
+        .then(response => response.json())
+        .then(config => {
+            if (config && config.whatsapp_number) {
+                link.href = `https://wa.me/${config.whatsapp_number}?text=` +
+                    encodeURIComponent("Hi, I have a question about a medicine on PharmaHub.");
+            }
+        })
+        .catch(() => {
+            // Keep the default link if /config isn't reachable.
+        });
+}
 
 
 function addOrdersLink(navLinks) {

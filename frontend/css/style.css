@@ -136,6 +136,16 @@ footer {
     margin-bottom: 20px;
 }
 
+.medicine-photo {
+    width: 100%;
+    height: 140px;
+    object-fit: cover;
+    border-radius: 10px;
+    margin-bottom: 16px;
+    background: #eaf4ff;
+    display: block;
+}
+
 .medicine-category {
     font-size: 12px;
     color: #1769aa;
@@ -449,18 +459,10 @@ footer {
     cursor: pointer;
 }
 
-.admin-table .delete-medicine,
-.admin-table .reject-prescription {
+.admin-table .delete-medicine {
     background-color: #fdecea;
     border-color: #f5c2c0;
     color: #b3261e;
-}
-
-.admin-table .approve-prescription {
-    background-color: #e6f4ea;
-    border-color: #b7dfc1;
-    color: #1e7d34;
-    margin-right: 6px;
 }
 
 /* Cart */
@@ -521,14 +523,6 @@ footer {
     text-align: center;
     color: #666;
     padding: 40px 0;
-}
-
-#cart-total {
-    max-width: 800px;
-    margin: 0 auto 20px;
-    text-align: right;
-    font-size: 20px;
-    font-weight: bold;
 }
 
 #checkout-button {
@@ -671,4 +665,171 @@ a.auth-button {
 .medicine-bottom button:disabled {
     background-color: #aaa;
     cursor: not-allowed;
+}
+/* WhatsApp "Chat with a Pharmacist" floating button */
+
+.whatsapp-float {
+    position: fixed;
+    bottom: 24px;
+    right: 24px;
+    background-color: #25d366;
+    color: white;
+    border-radius: 50px;
+    padding: 14px 20px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    text-decoration: none;
+    font-weight: 600;
+    font-size: 14px;
+    box-shadow: 0 6px 18px rgba(0, 0, 0, 0.18);
+    z-index: 1000;
+    transition: transform 0.15s;
+}
+
+.whatsapp-float:hover {
+    transform: translateY(-2px);
+}
+
+.whatsapp-float .whatsapp-icon {
+    font-size: 20px;
+    line-height: 1;
+}
+
+@media (max-width: 600px) {
+    .whatsapp-float span.whatsapp-label {
+        display: none;
+    }
+
+    .whatsapp-float {
+        padding: 14px;
+    }
+}
+
+/* Cart cost breakdown */
+
+.cart-summary {
+    max-width: 800px;
+    margin: 0 auto 20px;
+    background: white;
+    border: 1px solid #e5e7eb;
+    border-radius: 10px;
+    padding: 18px 22px;
+}
+
+.cart-summary-row {
+    display: flex;
+    justify-content: space-between;
+    padding: 6px 0;
+    font-size: 15px;
+    color: #444;
+}
+
+.cart-summary-row.total {
+    border-top: 1px solid #eee;
+    margin-top: 8px;
+    padding-top: 12px;
+    font-size: 19px;
+    font-weight: bold;
+    color: #222;
+}
+
+.delivery-address-group {
+    max-width: 800px;
+    margin: 0 auto 20px;
+    background: white;
+    border: 1px solid #e5e7eb;
+    border-radius: 10px;
+    padding: 18px 22px;
+}
+
+.delivery-address-group label {
+    display: block;
+    font-weight: 600;
+    margin-bottom: 8px;
+}
+
+.delivery-address-group textarea {
+    width: 100%;
+    padding: 12px 14px;
+    border: 1px solid #d1d5db;
+    border-radius: 7px;
+    font-size: 15px;
+    font-family: inherit;
+    resize: vertical;
+    min-height: 70px;
+}
+
+.order-delivery-address {
+    color: #666;
+    font-size: 13px;
+    margin-bottom: 10px;
+}
+
+/* Admin: medicine thumbnail */
+
+.admin-table img.medicine-thumb {
+    width: 42px;
+    height: 42px;
+    object-fit: cover;
+    border-radius: 6px;
+    vertical-align: middle;
+}
+
+/* Admin: Analytics tab */
+
+.analytics-cards {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 16px;
+    margin-bottom: 30px;
+}
+
+.analytics-card {
+    background: white;
+    border: 1px solid #e5e7eb;
+    border-radius: 10px;
+    padding: 20px;
+}
+
+.analytics-card h4 {
+    font-size: 13px;
+    text-transform: uppercase;
+    color: #1769aa;
+    margin-bottom: 10px;
+}
+
+.analytics-card .analytics-revenue {
+    font-size: 26px;
+    font-weight: bold;
+    margin-bottom: 4px;
+}
+
+.analytics-card .analytics-orders {
+    color: #666;
+    font-size: 13px;
+}
+
+.analytics-section {
+    margin-bottom: 30px;
+}
+
+.analytics-section h3 {
+    font-size: 20px;
+    margin-bottom: 14px;
+}
+
+.low-stock-badge {
+    background: #fdecea;
+    color: #b3261e;
+    padding: 3px 10px;
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: 600;
+}
+
+@media (max-width: 900px) {
+    .analytics-cards {
+        grid-template-columns: 1fr;
+    }
 }

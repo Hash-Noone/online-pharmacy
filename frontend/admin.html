@@ -26,13 +26,13 @@
 
         <section class="admin-header">
             <h2>Admin Dashboard</h2>
-            <p>Manage medicines, orders, and prescriptions.</p>
+            <p>Manage medicines, orders, and analytics.</p>
         </section>
 
         <nav class="admin-tabs">
             <button class="admin-tab-button active" data-tab="medicines-tab">Medicines</button>
             <button class="admin-tab-button" data-tab="orders-tab">Orders</button>
-            <button class="admin-tab-button" data-tab="prescriptions-tab">Prescriptions</button>
+            <button class="admin-tab-button" data-tab="analytics-tab">Analytics</button>
             <button class="admin-tab-button" data-tab="admins-tab">Admins</button>
         </nav>
 
@@ -51,10 +51,7 @@
                     <input type="text" id="med-category" placeholder="Category" required>
                     <input type="number" id="med-stock" placeholder="Stock" min="0" required>
                     <input type="text" id="med-description" placeholder="Description" required>
-                    <label class="admin-checkbox">
-                        <input type="checkbox" id="med-prescription">
-                        Prescription required
-                    </label>
+                    <input type="url" id="med-image-url" placeholder="Image URL (optional)">
                 </div>
                 <button type="submit">Save Medicine</button>
             </form>
@@ -62,11 +59,11 @@
             <table class="admin-table">
                 <thead>
                     <tr>
+                        <th>Photo</th>
                         <th>Name</th>
                         <th>Category</th>
                         <th>Price</th>
                         <th>Stock</th>
-                        <th>Rx?</th>
                         <th></th>
                     </tr>
                 </thead>
@@ -83,6 +80,7 @@
                     <tr>
                         <th>ID</th>
                         <th>Customer</th>
+                        <th>Delivery Address</th>
                         <th>Total</th>
                         <th>Status</th>
                         <th>Payment</th>
@@ -93,24 +91,55 @@
             </table>
         </section>
 
-        <!-- Prescriptions -->
-        <section id="prescriptions-tab" class="admin-tab-panel hidden">
-            <h3>Prescriptions</h3>
+        <!-- Analytics -->
+        <section id="analytics-tab" class="admin-tab-panel hidden">
+            <h3>Analytics</h3>
 
-            <table class="admin-table">
-                <thead>
-                    <tr>
-                        <th>ID</th>
-                        <th>Customer</th>
-                        <th>Medicine ID</th>
-                        <th>Doctor</th>
-                        <th>Expiry</th>
-                        <th>Status</th>
-                        <th></th>
-                    </tr>
-                </thead>
-                <tbody id="prescriptions-table-body"></tbody>
-            </table>
+            <div class="analytics-cards">
+                <div class="analytics-card">
+                    <h4>Today</h4>
+                    <div class="analytics-revenue" id="analytics-today-revenue">₦0</div>
+                    <div class="analytics-orders" id="analytics-today-orders">0 paid orders</div>
+                </div>
+                <div class="analytics-card">
+                    <h4>This Week</h4>
+                    <div class="analytics-revenue" id="analytics-week-revenue">₦0</div>
+                    <div class="analytics-orders" id="analytics-week-orders">0 paid orders</div>
+                </div>
+                <div class="analytics-card">
+                    <h4>This Month</h4>
+                    <div class="analytics-revenue" id="analytics-month-revenue">₦0</div>
+                    <div class="analytics-orders" id="analytics-month-orders">0 paid orders</div>
+                </div>
+            </div>
+
+            <div class="analytics-section">
+                <h3>Low Inventory Alerts</h3>
+                <table class="admin-table">
+                    <thead>
+                        <tr>
+                            <th>Name</th>
+                            <th>Category</th>
+                            <th>Stock Remaining</th>
+                        </tr>
+                    </thead>
+                    <tbody id="low-stock-table-body"></tbody>
+                </table>
+            </div>
+
+            <div class="analytics-section">
+                <h3>Best Sellers</h3>
+                <table class="admin-table">
+                    <thead>
+                        <tr>
+                            <th>Name</th>
+                            <th>Units Sold</th>
+                            <th>Revenue</th>
+                        </tr>
+                    </thead>
+                    <tbody id="best-sellers-table-body"></tbody>
+                </table>
+            </div>
         </section>
 
         <!-- Admins -->

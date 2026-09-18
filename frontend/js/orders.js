@@ -73,6 +73,21 @@ function renderOrders(orders) {
 
             <ul class="order-items-list">${itemsList}</ul>
 
+            <p class="order-delivery-address">🚚 Delivering to: ${order.delivery_address}</p>
+
+            <div class="cart-summary-row">
+                <span>Subtotal</span>
+                <span>₦${order.subtotal.toLocaleString()}</span>
+            </div>
+            <div class="cart-summary-row">
+                <span>Tax</span>
+                <span>₦${order.tax_amount.toLocaleString()}</span>
+            </div>
+            <div class="cart-summary-row">
+                <span>Delivery Fee</span>
+                <span>₦${order.delivery_fee.toLocaleString()}</span>
+            </div>
+
             <div class="order-card-footer">
                 <strong>Total: ₦${order.total_price.toLocaleString()}</strong>
                 ${canPay ? `<button class="pay-now" data-id="${order.id}">Pay Now</button>` : ""}

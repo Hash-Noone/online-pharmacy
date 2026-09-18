@@ -34,10 +34,12 @@ function loadMedicines() {
 
                 medicineCard.className = "medicine-card";
 
+                const photoHtml = medicine.image_url
+                    ? `<img class="medicine-photo" src="${medicine.image_url}" alt="${medicine.name}" loading="lazy" onerror="this.outerHTML = '<div class=&quot;medicine-icon&quot;>💊</div>';">`
+                    : `<div class="medicine-icon">💊</div>`;
+
                 medicineCard.innerHTML = `
-                    <div class="medicine-icon">
-                        💊
-                    </div>
+                    ${photoHtml}
 
                     <div class="medicine-info">
 

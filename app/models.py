@@ -1,6 +1,6 @@
 from datetime import datetime, timezone
 
-from sqlalchemy import String, Float, Integer, Boolean, ForeignKey, DateTime, UniqueConstraint
+from sqlalchemy import String, Float, Integer, ForeignKey, DateTime, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.database import Base
@@ -15,7 +15,7 @@ class Medicine(Base):
     description: Mapped[str] = mapped_column(String(200))
     stock: Mapped[int] = mapped_column(Integer)
     category: Mapped[str] = mapped_column(String(50))
-    prescription_required: Mapped[bool] = mapped_column(Boolean, default=False)
+    image_url: Mapped[str | None] = mapped_column(String(500), nullable=True)
 
 
 class Admin(Base):
@@ -38,7 +38,6 @@ class Customer(Base):
         back_populates="customer", cascade="all, delete-orphan"
     )
     orders: Mapped[list["Order"]] = relationship(back_populates="customer")
-    prescriptions: Mapped[list["Prescription"]] = relationship(back_populates="customer")
 
 
 class CartItem(Base):
@@ -59,7 +58,11 @@ class Order(Base):
 
     id: Mapped[int] = mapped_column(primary_key=True)
     customer_id: Mapped[int] = mapped_column(ForeignKey("customers.id"))
+    subtotal: Mapped[float] = mapped_column(Float, default=0.0)
+    tax_amount: Mapped[float] = mapped_column(Float, default=0.0)
+    delivery_fee: Mapped[float] = mapped_column(Float, default=0.0)
     total_price: Mapped[float] = mapped_column(Float)
+    delivery_address: Mapped[str] = mapped_column(String(255), default="")
     status: Mapped[str] = mapped_column(String(20), default="Pending")
     payment_status: Mapped[str] = mapped_column(String(20), default="Pending")
     payment_reference: Mapped[str | None] = mapped_column(String(100), nullable=True)
@@ -86,17 +89,3 @@ class OrderItem(Base):
 
     order: Mapped["Order"] = relationship(back_populates="items")
 
-
-class Prescription(Base):
-    __tablename__ = "prescriptions"
-
-    id: Mapped[int] = mapped_column(primary_key=True)
-    customer_id: Mapped[int] = mapped_column(ForeignKey("customers.id"))
-    medicine_id: Mapped[int] = mapped_column(ForeignKey("medicines.id"))
-    doctor_name: Mapped[str] = mapped_column(String(100))
-    prescription_date: Mapped[datetime] = mapped_column(DateTime(timezone=True))
-    expiry_date: Mapped[datetime] = mapped_column(DateTime(timezone=True))
-    status: Mapped[str] = mapped_column(String(20), default="Pending")
-
-    customer: Mapped["Customer"] = relationship(back_populates="prescriptions")
-    medicine: Mapped["Medicine"] = relationship()

@@ -28,6 +28,10 @@ document.querySelectorAll(".admin-tab-button").forEach(button => {
 
         button.classList.add("active");
         document.getElementById(button.dataset.tab).classList.remove("hidden");
+
+        if (button.dataset.tab === "analytics-tab") {
+            loadAnalytics();
+        }
     });
 });
 
@@ -41,12 +45,15 @@ function loadMedicines() {
 
             medicines.forEach(medicine => {
                 const row = document.createElement("tr");
+                const thumb = medicine.image_url
+                    ? `<img class="medicine-thumb" src="${medicine.image_url}" alt="${medicine.name}" onerror="this.style.visibility='hidden';">`
+                    : "—";
                 row.innerHTML = `
+                    <td>${thumb}</td>
                     <td>${medicine.name}</td>
                     <td>${medicine.category}</td>
                     <td>₦${medicine.price.toLocaleString()}</td>
                     <td>${medicine.stock}</td>
-                    <td>${medicine.prescription_required ? "Yes" : "No"}</td>
                     <td><button class="delete-medicine" data-id="${medicine.id}">Delete</button></td>
                 `;
                 tbody.appendChild(row);
@@ -66,13 +73,15 @@ document.getElementById("show-add-medicine").addEventListener("click", () => {
 document.getElementById("add-medicine-form").addEventListener("submit", function (event) {
     event.preventDefault();
 
+    const imageUrl = document.getElementById("med-image-url").value.trim();
+
     const payload = {
         name: document.getElementById("med-name").value,
         price: Number(document.getElementById("med-price").value),
         category: document.getElementById("med-category").value,
         stock: Number(document.getElementById("med-stock").value),
         description: document.getElementById("med-description").value,
-        prescription_required: document.getElementById("med-prescription").checked,
+        image_url: imageUrl || null,
     };
 
     fetch("/medicines", {
@@ -147,6 +156,7 @@ function loadOrders() {
                 row.innerHTML = `
                     <td>${order.id}</td>
                     <td>${order.customer_username}</td>
+                    <td>${order.delivery_address}</td>
                     <td>₦${order.total_price.toLocaleString()}</td>
                     <td>${order.status}</td>
                     <td>${order.payment_status}</td>
@@ -193,67 +203,59 @@ function updateOrderStatus(orderId, status) {
         .catch(error => console.error("Error updating order:", error));
 }
 
-// --- Prescriptions ---
-function loadPrescriptions() {
-    fetch("/admin/prescriptions", { headers: authHeaders() })
-        .then(response => {
-            if (handleAuthError(response)) return;
-            return response.json();
-        })
-        .then(prescriptions => {
-            if (!prescriptions) return;
-            const tbody = document.getElementById("prescriptions-table-body");
-            tbody.innerHTML = "";
-
-            prescriptions.forEach(prescription => {
-                const canReview = prescription.status === "Pending";
-                const row = document.createElement("tr");
-                row.innerHTML = `
-                    <td>${prescription.id}</td>
-                    <td>${prescription.customer_username}</td>
-                    <td>${prescription.medicine_id}</td>
-                    <td>${prescription.doctor_name}</td>
-                    <td>${new Date(prescription.expiry_date).toLocaleDateString()}</td>
-                    <td>${prescription.status}</td>
-                    <td>
-                        ${canReview
-                            ? `<button class="approve-prescription" data-id="${prescription.id}">Approve</button>
-                               <button class="reject-prescription" data-id="${prescription.id}">Reject</button>`
-                            : "—"}
-                    </td>
-                `;
-                tbody.appendChild(row);
-            });
-
-            document.querySelectorAll(".approve-prescription").forEach(button => {
-                button.addEventListener("click", () => updatePrescriptionStatus(button.dataset.id, "Approved"));
-            });
-            document.querySelectorAll(".reject-prescription").forEach(button => {
-                button.addEventListener("click", () => updatePrescriptionStatus(button.dataset.id, "Rejected"));
-            });
-        })
-        .catch(error => console.error("Error loading prescriptions:", error));
-}
-
-function updatePrescriptionStatus(prescriptionId, status) {
-    fetch(`/admin/prescriptions/${prescriptionId}/status`, {
-        method: "PUT",
-        headers: authHeaders({ "Content-Type": "application/json" }),
-        body: JSON.stringify({ status }),
-    })
+// --- Analytics ---
+function loadAnalytics() {
+    fetch("/admin/analytics", { headers: authHeaders() })
         .then(response => {
             if (handleAuthError(response)) return;
             return response.json();
         })
         .then(data => {
             if (!data) return;
-            if (data.detail) {
-                alert(data.detail);
-                return;
+            if (data.detail) return;
+
+            document.getElementById("analytics-today-revenue").textContent = `₦${data.today.revenue.toLocaleString()}`;
+            document.getElementById("analytics-today-orders").textContent = `${data.today.orders} paid order${data.today.orders === 1 ? "" : "s"}`;
+
+            document.getElementById("analytics-week-revenue").textContent = `₦${data.this_week.revenue.toLocaleString()}`;
+            document.getElementById("analytics-week-orders").textContent = `${data.this_week.orders} paid order${data.this_week.orders === 1 ? "" : "s"}`;
+
+            document.getElementById("analytics-month-revenue").textContent = `₦${data.this_month.revenue.toLocaleString()}`;
+            document.getElementById("analytics-month-orders").textContent = `${data.this_month.orders} paid order${data.this_month.orders === 1 ? "" : "s"}`;
+
+            const lowStockBody = document.getElementById("low-stock-table-body");
+            lowStockBody.innerHTML = "";
+            if (data.low_stock.length === 0) {
+                lowStockBody.innerHTML = `<tr><td colspan="3">All medicines are well stocked.</td></tr>`;
+            } else {
+                data.low_stock.forEach(medicine => {
+                    const row = document.createElement("tr");
+                    row.innerHTML = `
+                        <td>${medicine.name}</td>
+                        <td>${medicine.category}</td>
+                        <td><span class="low-stock-badge">${medicine.stock} left</span></td>
+                    `;
+                    lowStockBody.appendChild(row);
+                });
             }
-            loadPrescriptions();
+
+            const bestSellersBody = document.getElementById("best-sellers-table-body");
+            bestSellersBody.innerHTML = "";
+            if (data.best_sellers.length === 0) {
+                bestSellersBody.innerHTML = `<tr><td colspan="3">No sales yet.</td></tr>`;
+            } else {
+                data.best_sellers.forEach(medicine => {
+                    const row = document.createElement("tr");
+                    row.innerHTML = `
+                        <td>${medicine.name}</td>
+                        <td>${medicine.quantity_sold}</td>
+                        <td>₦${medicine.revenue.toLocaleString()}</td>
+                    `;
+                    bestSellersBody.appendChild(row);
+                });
+            }
         })
-        .catch(error => console.error("Error updating prescription:", error));
+        .catch(error => console.error("Error loading analytics:", error));
 }
 
 // --- Admins ---
@@ -286,4 +288,4 @@ document.getElementById("add-admin-form").addEventListener("submit", function (e
 // --- Initial load ---
 loadMedicines();
 loadOrders();
-loadPrescriptions();
+loadAnalytics();

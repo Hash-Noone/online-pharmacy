@@ -29,26 +29,37 @@ function loadCart() {
         })
         .then(data => {
             if (!data) return;
-            renderCart(data.cart, data.total_price);
+            renderCart(data);
         })
         .catch(error => console.error("Error loading cart:", error));
 }
 
-function renderCart(items, totalPrice) {
+function renderCart(data) {
+    const items = data.cart;
     const container = document.getElementById("cart-items");
-    const totalEl = document.getElementById("cart-total");
+    const summaryEl = document.getElementById("cart-summary");
+    const deliveryAddressSection = document.getElementById("delivery-address-section");
     const checkoutButton = document.getElementById("checkout-button");
 
     container.innerHTML = "";
 
     if (items.length === 0) {
         container.innerHTML = `<p class="cart-empty">Your cart is empty. <a href="medicines.html">Browse medicines</a> to add something.</p>`;
-        totalEl.textContent = "";
+        summaryEl.classList.add("hidden");
+        deliveryAddressSection.classList.add("hidden");
         checkoutButton.disabled = true;
         return;
     }
 
     checkoutButton.disabled = false;
+    summaryEl.classList.remove("hidden");
+    deliveryAddressSection.classList.remove("hidden");
+
+    document.getElementById("summary-subtotal").textContent = `₦${data.subtotal.toLocaleString()}`;
+    document.getElementById("summary-tax-label").textContent = `Tax (${(data.tax_rate * 100).toFixed(1)}% VAT)`;
+    document.getElementById("summary-tax").textContent = `₦${data.tax_amount.toLocaleString()}`;
+    document.getElementById("summary-delivery").textContent = `₦${data.delivery_fee.toLocaleString()}`;
+    document.getElementById("summary-grand-total").textContent = `₦${data.grand_total.toLocaleString()}`;
 
     items.forEach(item => {
         const row = document.createElement("div");
@@ -73,8 +84,6 @@ function renderCart(items, totalPrice) {
         `;
         container.appendChild(row);
     });
-
-    totalEl.textContent = `Total: ₦${totalPrice.toLocaleString()}`;
 
     document.querySelectorAll(".cart-quantity-input").forEach(input => {
         input.addEventListener("change", () => {
@@ -129,12 +138,20 @@ function removeItem(medicineId) {
 }
 
 document.getElementById("checkout-button").addEventListener("click", function () {
+    const deliveryAddress = document.getElementById("delivery-address").value.trim();
+
+    if (deliveryAddress.length < 5) {
+        alert("Please enter a delivery address (at least 5 characters).");
+        return;
+    }
+
     this.disabled = true;
     this.textContent = "Placing order…";
 
     fetch("/checkout", {
         method: "POST",
-        headers: authHeaders(),
+        headers: authHeaders({ "Content-Type": "application/json" }),
+        body: JSON.stringify({ delivery_address: deliveryAddress }),
     })
         .then(response => {
             if (handleAuthError(response)) return;
