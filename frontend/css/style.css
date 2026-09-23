@@ -1,3 +1,47 @@
+:root {
+    --bg: #f5f7fa;
+    --surface: #ffffff;
+    --text: #222222;
+    --text-muted: #666666;
+    --border: #e5e7eb;
+    --input-border: #d1d5db;
+    --brand: #1769aa;
+    --brand-hover: #12578e;
+    --accent-bg: #eaf4ff;
+    --disabled-bg: #a9c6db;
+    --danger-bg: #fdecea;
+    --danger-border: #f5c2c0;
+    --danger-text: #b3261e;
+    --warning-bg: #fff4e0;
+    --warning-text: #a15c00;
+    --success-bg: #e6f4ea;
+    --success-text: #1e7d34;
+    --info-bg: #eaf0fb;
+    --card-shadow: rgba(0, 0, 0, 0.08);
+}
+
+[data-theme="dark"] {
+    --bg: #12161c;
+    --surface: #1b212b;
+    --text: #e7e9ec;
+    --text-muted: #9aa4b2;
+    --border: #2b3340;
+    --input-border: #394253;
+    --brand: #4da3e0;
+    --brand-hover: #6db8ea;
+    --accent-bg: #1e2b3a;
+    --disabled-bg: #33465a;
+    --danger-bg: #3a2222;
+    --danger-border: #5c3535;
+    --danger-text: #f28b82;
+    --warning-bg: #3a3120;
+    --warning-text: #e0b256;
+    --success-bg: #1f3327;
+    --success-text: #7fd99b;
+    --info-bg: #202b3d;
+    --card-shadow: rgba(0, 0, 0, 0.35);
+}
+
 * {
     box-sizing: border-box;
     margin: 0;
@@ -6,14 +50,15 @@
 
 body {
     font-family: Arial, sans-serif;
-    background-color: #f5f7fa;
-    color: #222;
+    background-color: var(--bg);
+    color: var(--text);
+    transition: background-color 0.15s ease, color 0.15s ease;
 }
 
 header {
-    background-color: white;
+    background-color: var(--surface);
     padding: 20px 50px;
-    border-bottom: 1px solid #ddd;
+    border-bottom: 1px solid var(--border);
 }
 
 nav {
@@ -28,7 +73,7 @@ nav h1 {
 
 nav a {
     text-decoration: none;
-    color: #333;
+    color: var(--text);
     margin-left: 25px;
 }
 
@@ -51,7 +96,7 @@ nav a {
     padding: 14px 25px;
     border: none;
     border-radius: 6px;
-    background-color: #1769aa;
+    background-color: var(--brand);
     color: white;
     font-size: 16px;
     cursor: pointer;
@@ -65,7 +110,7 @@ nav a {
 }
 
 .feature {
-    background-color: white;
+    background-color: var(--surface);
     padding: 30px;
     width: 280px;
     border-radius: 8px;
@@ -101,7 +146,7 @@ footer {
 }
 
 .medicines-header p {
-    color: #666;
+    color: var(--text-muted);
     font-size: 17px;
 }
 
@@ -112,8 +157,8 @@ footer {
 }
 
 .medicine-card {
-    background: white;
-    border: 1px solid #e5e7eb;
+    background: var(--surface);
+    border: 1px solid var(--border);
     border-radius: 12px;
     padding: 25px;
     transition: transform 0.2s, box-shadow 0.2s;
@@ -121,13 +166,13 @@ footer {
 
 .medicine-card:hover {
     transform: translateY(-4px);
-    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.08);
+    box-shadow: 0 8px 25px var(--card-shadow);
 }
 
 .medicine-icon {
     width: 55px;
     height: 55px;
-    background: #eaf4ff;
+    background: var(--accent-bg);
     border-radius: 12px;
     display: flex;
     align-items: center;
@@ -142,13 +187,13 @@ footer {
     object-fit: cover;
     border-radius: 10px;
     margin-bottom: 16px;
-    background: #eaf4ff;
+    background: var(--accent-bg);
     display: block;
 }
 
 .medicine-category {
     font-size: 12px;
-    color: #1769aa;
+    color: var(--brand);
     font-weight: bold;
     text-transform: uppercase;
 }
@@ -159,13 +204,13 @@ footer {
 }
 
 .medicine-description {
-    color: #666;
+    color: var(--text-muted);
     line-height: 1.5;
     min-height: 45px;
 }
 
 .medicine-stock {
-    color: #555;
+    color: var(--text-muted);
     font-size: 14px;
     margin: 15px 0;
 }
@@ -182,7 +227,7 @@ footer {
 }
 
 .medicine-bottom button {
-    background: #1769aa;
+    background: var(--brand);
     color: white;
     border: none;
     padding: 10px 16px;
@@ -192,7 +237,7 @@ footer {
 }
 
 .medicine-bottom button:hover {
-    background: #12578e;
+    background: var(--brand-hover);
 }
 
 @media (max-width: 900px) {
@@ -224,11 +269,11 @@ footer {
 .auth-card {
     width: 100%;
     max-width: 450px;
-    background: white;
+    background: var(--surface);
     padding: 40px;
     border-radius: 14px;
-    border: 1px solid #e5e7eb;
-    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.06);
+    border: 1px solid var(--border);
+    box-shadow: 0 10px 30px var(--card-shadow);
 }
 
 .auth-header {
@@ -247,7 +292,7 @@ footer {
 }
 
 .auth-header p {
-    color: #666;
+    color: var(--text-muted);
     line-height: 1.5;
 }
 
@@ -264,14 +309,14 @@ footer {
 .form-group input {
     width: 100%;
     padding: 13px 14px;
-    border: 1px solid #d1d5db;
+    border: 1px solid var(--input-border);
     border-radius: 7px;
     font-size: 15px;
     outline: none;
 }
 
 .form-group input:focus {
-    border-color: #1769aa;
+    border-color: var(--brand);
 }
 
 .auth-button {
@@ -279,7 +324,7 @@ footer {
     padding: 14px;
     border: none;
     border-radius: 7px;
-    background-color: #1769aa;
+    background-color: var(--brand);
     color: white;
     font-size: 16px;
     font-weight: 600;
@@ -287,7 +332,7 @@ footer {
 }
 
 .auth-button:hover {
-    background-color: #12578e;
+    background-color: var(--brand-hover);
 }
 
 .form-message {
@@ -298,11 +343,11 @@ footer {
 .auth-footer {
     text-align: center;
     margin-top: 25px;
-    color: #666;
+    color: var(--text-muted);
 }
 
 .auth-footer a {
-    color: #1769aa;
+    color: var(--brand);
     text-decoration: none;
     font-weight: 600;
 }
@@ -314,13 +359,13 @@ footer {
 }
 
 .secondary-button {
-    background-color: white !important;
-    color: #1769aa !important;
-    border: 1px solid #1769aa !important;
+    background-color: var(--surface) !important;
+    color: var(--brand) !important;
+    border: 1px solid var(--brand) !important;
 }
 
 .secondary-button:hover {
-    background-color: #f0f7ff !important;
+    background-color: var(--accent-bg) !important;
 }
 /* Admin Dashboard */
 
@@ -344,13 +389,13 @@ footer {
 }
 
 .admin-header p {
-    color: #666;
+    color: var(--text-muted);
 }
 
 .admin-tabs {
     display: flex;
     gap: 10px;
-    border-bottom: 1px solid #e5e7eb;
+    border-bottom: 1px solid var(--border);
     margin-bottom: 25px;
 }
 
@@ -360,14 +405,14 @@ footer {
     padding: 12px 16px;
     font-size: 15px;
     font-weight: 600;
-    color: #666;
+    color: var(--text-muted);
     cursor: pointer;
     border-bottom: 2px solid transparent;
 }
 
 .admin-tab-button.active {
-    color: #1769aa;
-    border-bottom-color: #1769aa;
+    color: var(--brand);
+    border-bottom-color: var(--brand);
 }
 
 .admin-panel-header {
@@ -384,7 +429,7 @@ footer {
 .admin-panel-header button,
 .admin-form button,
 #logout-link {
-    background-color: #1769aa;
+    background-color: var(--brand);
     color: white;
     border: none;
     padding: 10px 16px;
@@ -399,8 +444,8 @@ footer {
 }
 
 .admin-form {
-    background: white;
-    border: 1px solid #e5e7eb;
+    background: var(--surface);
+    border: 1px solid var(--border);
     border-radius: 10px;
     padding: 20px;
     margin-bottom: 20px;
@@ -415,7 +460,7 @@ footer {
 
 .admin-form input {
     padding: 10px 12px;
-    border: 1px solid #d1d5db;
+    border: 1px solid var(--input-border);
     border-radius: 6px;
     font-size: 14px;
 }
@@ -430,7 +475,7 @@ footer {
 .admin-table {
     width: 100%;
     border-collapse: collapse;
-    background: white;
+    background: var(--surface);
     border-radius: 10px;
     overflow: hidden;
 }
@@ -439,13 +484,13 @@ footer {
 .admin-table td {
     text-align: left;
     padding: 12px 14px;
-    border-bottom: 1px solid #e5e7eb;
+    border-bottom: 1px solid var(--border);
     font-size: 14px;
 }
 
 .admin-table th {
-    background-color: #f0f7ff;
-    color: #1769aa;
+    background-color: var(--accent-bg);
+    color: var(--brand);
     text-transform: uppercase;
     font-size: 12px;
 }
@@ -454,15 +499,15 @@ footer {
 .admin-table select {
     padding: 6px 10px;
     border-radius: 6px;
-    border: 1px solid #d1d5db;
+    border: 1px solid var(--input-border);
     font-size: 13px;
     cursor: pointer;
 }
 
 .admin-table .delete-medicine {
-    background-color: #fdecea;
-    border-color: #f5c2c0;
-    color: #b3261e;
+    background-color: var(--danger-bg);
+    border-color: var(--danger-border);
+    color: var(--danger-text);
 }
 
 /* Cart */
@@ -473,8 +518,8 @@ footer {
 }
 
 .cart-item {
-    background: white;
-    border: 1px solid #e5e7eb;
+    background: var(--surface);
+    border: 1px solid var(--border);
     border-radius: 10px;
     padding: 18px 22px;
     margin-bottom: 14px;
@@ -491,7 +536,7 @@ footer {
 }
 
 .cart-item-info p {
-    color: #666;
+    color: var(--text-muted);
     font-size: 14px;
 }
 
@@ -504,15 +549,15 @@ footer {
 .cart-quantity-input {
     width: 60px;
     padding: 8px;
-    border: 1px solid #d1d5db;
+    border: 1px solid var(--input-border);
     border-radius: 6px;
     text-align: center;
 }
 
 .cart-remove {
-    background: #fdecea;
-    border: 1px solid #f5c2c0;
-    color: #b3261e;
+    background: var(--danger-bg);
+    border: 1px solid var(--danger-border);
+    color: var(--danger-text);
     padding: 8px 12px;
     border-radius: 6px;
     cursor: pointer;
@@ -521,7 +566,7 @@ footer {
 
 .cart-empty {
     text-align: center;
-    color: #666;
+    color: var(--text-muted);
     padding: 40px 0;
 }
 
@@ -533,7 +578,7 @@ footer {
     padding: 15px;
     border: none;
     border-radius: 8px;
-    background-color: #1769aa;
+    background-color: var(--brand);
     color: white;
     font-size: 16px;
     font-weight: 600;
@@ -541,7 +586,7 @@ footer {
 }
 
 #checkout-button:disabled {
-    background-color: #a9c6db;
+    background-color: var(--disabled-bg);
     cursor: not-allowed;
 }
 
@@ -559,6 +604,25 @@ main > section {
     padding: 50px 30px 80px;
 }
 
+.orders-toolbar {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 10px;
+    margin-bottom: 16px;
+    font-size: 14px;
+    color: var(--text-muted);
+}
+
+.orders-toolbar select {
+    padding: 8px 10px;
+    border: 1px solid var(--input-border);
+    border-radius: 6px;
+    background: var(--surface);
+    color: var(--text);
+    font-size: 14px;
+}
+
 .orders-list {
     display: flex;
     flex-direction: column;
@@ -566,8 +630,8 @@ main > section {
 }
 
 .order-card {
-    background: white;
-    border: 1px solid #e5e7eb;
+    background: var(--surface);
+    border: 1px solid var(--border);
     border-radius: 12px;
     padding: 22px;
 }
@@ -584,8 +648,14 @@ main > section {
 }
 
 .order-status {
-    color: #666;
+    color: var(--text-muted);
     font-size: 13px;
+}
+
+.order-date {
+    color: var(--text-muted);
+    font-size: 13px;
+    margin-left: 10px;
 }
 
 .payment-badge {
@@ -597,28 +667,28 @@ main > section {
 }
 
 .badge-pending {
-    background: #fff4e0;
-    color: #a15c00;
+    background: var(--warning-bg);
+    color: var(--warning-text);
 }
 
 .badge-paid {
-    background: #e6f4ea;
-    color: #1e7d34;
+    background: var(--success-bg);
+    color: var(--success-text);
 }
 
 .badge-failed {
-    background: #fdecea;
-    color: #b3261e;
+    background: var(--danger-bg);
+    color: var(--danger-text);
 }
 
 .badge-refunded {
-    background: #eaf0fb;
-    color: #1769aa;
+    background: var(--info-bg);
+    color: var(--brand);
 }
 
 .order-items-list {
     list-style: none;
-    color: #444;
+    color: var(--text);
     font-size: 14px;
     margin-bottom: 16px;
 }
@@ -632,11 +702,11 @@ main > section {
     justify-content: space-between;
     align-items: center;
     padding-top: 14px;
-    border-top: 1px solid #eee;
+    border-top: 1px solid var(--border);
 }
 
 .order-card-footer .pay-now {
-    background-color: #1769aa;
+    background-color: var(--brand);
     color: white;
     border: none;
     padding: 10px 18px;
@@ -663,9 +733,26 @@ a.auth-button {
 }
 
 .medicine-bottom button:disabled {
-    background-color: #aaa;
+    background-color: var(--disabled-bg);
     cursor: not-allowed;
 }
+/* Dark mode toggle */
+
+#theme-toggle {
+    background: none;
+    border: 1px solid var(--input-border);
+    color: var(--text);
+    border-radius: 20px;
+    padding: 6px 12px;
+    font-size: 14px;
+    cursor: pointer;
+    margin-left: 25px;
+}
+
+#theme-toggle:hover {
+    background: var(--accent-bg);
+}
+
 /* WhatsApp "Chat with a Pharmacist" floating button */
 
 .whatsapp-float {
@@ -711,8 +798,8 @@ a.auth-button {
 .cart-summary {
     max-width: 800px;
     margin: 0 auto 20px;
-    background: white;
-    border: 1px solid #e5e7eb;
+    background: var(--surface);
+    border: 1px solid var(--border);
     border-radius: 10px;
     padding: 18px 22px;
 }
@@ -722,23 +809,23 @@ a.auth-button {
     justify-content: space-between;
     padding: 6px 0;
     font-size: 15px;
-    color: #444;
+    color: var(--text);
 }
 
 .cart-summary-row.total {
-    border-top: 1px solid #eee;
+    border-top: 1px solid var(--border);
     margin-top: 8px;
     padding-top: 12px;
     font-size: 19px;
     font-weight: bold;
-    color: #222;
+    color: var(--text);
 }
 
 .delivery-address-group {
     max-width: 800px;
     margin: 0 auto 20px;
-    background: white;
-    border: 1px solid #e5e7eb;
+    background: var(--surface);
+    border: 1px solid var(--border);
     border-radius: 10px;
     padding: 18px 22px;
 }
@@ -752,7 +839,7 @@ a.auth-button {
 .delivery-address-group textarea {
     width: 100%;
     padding: 12px 14px;
-    border: 1px solid #d1d5db;
+    border: 1px solid var(--input-border);
     border-radius: 7px;
     font-size: 15px;
     font-family: inherit;
@@ -761,7 +848,7 @@ a.auth-button {
 }
 
 .order-delivery-address {
-    color: #666;
+    color: var(--text-muted);
     font-size: 13px;
     margin-bottom: 10px;
 }
@@ -786,8 +873,8 @@ a.auth-button {
 }
 
 .analytics-card {
-    background: white;
-    border: 1px solid #e5e7eb;
+    background: var(--surface);
+    border: 1px solid var(--border);
     border-radius: 10px;
     padding: 20px;
 }
@@ -795,7 +882,7 @@ a.auth-button {
 .analytics-card h4 {
     font-size: 13px;
     text-transform: uppercase;
-    color: #1769aa;
+    color: var(--brand);
     margin-bottom: 10px;
 }
 
@@ -806,7 +893,7 @@ a.auth-button {
 }
 
 .analytics-card .analytics-orders {
-    color: #666;
+    color: var(--text-muted);
     font-size: 13px;
 }
 
@@ -820,8 +907,8 @@ a.auth-button {
 }
 
 .low-stock-badge {
-    background: #fdecea;
-    color: #b3261e;
+    background: var(--danger-bg);
+    color: var(--danger-text);
     padding: 3px 10px;
     border-radius: 20px;
     font-size: 12px;

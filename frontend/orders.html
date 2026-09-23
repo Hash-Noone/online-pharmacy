@@ -4,6 +4,13 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>My Orders - PharmaHub</title>
+    <script>
+        (function () {
+            var saved = localStorage.getItem("theme");
+            var theme = saved || (window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light");
+            document.documentElement.setAttribute("data-theme", theme);
+        })();
+    </script>
     <link rel="stylesheet" href="css/style.css">
 </head>
 
@@ -28,6 +35,14 @@
             <h2>My Orders</h2>
             <p>Track your orders and pick up where you left off on payment.</p>
         </section>
+
+        <div class="orders-toolbar">
+            <label for="orders-sort">Sort by date</label>
+            <select id="orders-sort">
+                <option value="newest">Newest first</option>
+                <option value="oldest">Oldest first</option>
+            </select>
+        </div>
 
         <div id="orders-list" class="orders-list">
             <!-- JavaScript will put orders here -->

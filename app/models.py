@@ -1,6 +1,8 @@
+import uuid
 from datetime import datetime, timezone
 
 from sqlalchemy import String, Float, Integer, ForeignKey, DateTime, UniqueConstraint
+from sqlalchemy.dialects.postgresql import UUID as PGUUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.database import Base
@@ -56,7 +58,9 @@ class CartItem(Base):
 class Order(Base):
     __tablename__ = "orders"
 
-    id: Mapped[int] = mapped_column(primary_key=True)
+    # UUID rather than a sequential integer, so order IDs in URLs and emails
+    # can't be guessed or used to infer how many orders the store has had.
+    id: Mapped[uuid.UUID] = mapped_column(PGUUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
     customer_id: Mapped[int] = mapped_column(ForeignKey("customers.id"))
     subtotal: Mapped[float] = mapped_column(Float, default=0.0)
     tax_amount: Mapped[float] = mapped_column(Float, default=0.0)
@@ -80,7 +84,7 @@ class OrderItem(Base):
     __tablename__ = "order_items"
 
     id: Mapped[int] = mapped_column(primary_key=True)
-    order_id: Mapped[int] = mapped_column(ForeignKey("orders.id"))
+    order_id: Mapped[uuid.UUID] = mapped_column(PGUUID(as_uuid=True), ForeignKey("orders.id"))
     medicine_id: Mapped[int] = mapped_column(ForeignKey("medicines.id"))
     name: Mapped[str] = mapped_column(String(50))
     quantity: Mapped[int] = mapped_column(Integer)

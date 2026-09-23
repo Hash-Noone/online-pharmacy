@@ -2,6 +2,8 @@ import os
 import uuid
 import httpx
 from fastapi import FastAPI, HTTPException, Query, Depends, Request
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import RedirectResponse
 from pydantic import BaseModel, Field, ConfigDict
 from datetime import datetime, timedelta, timezone
 from jose import JWTError, jwt
@@ -18,7 +20,6 @@ from app.database import Base, engine, get_db
 from app import models
 
 load_dotenv()
-PAYSTACK_SECRET_KEY = os.getenv("PAYSTACK_SECRET_KEY")
 password_hash = PasswordHash.recommended()
 
 # --- SECURITY: secret key and admin credentials come from the environment ---
@@ -28,6 +29,28 @@ if not SECRET_KEY:
         "JWT_SECRET_KEY is not set. Add it to your .env file, e.g. "
         "JWT_SECRET_KEY=$(python -c \"import secrets; print(secrets.token_hex(32))\")"
     )
+
+# Payments silently 401 against Paystack if this is missing, which looks like
+# "checkout is broken" with no obvious cause — so fail loudly at startup
+# instead, the same way we do for JWT_SECRET_KEY.
+PAYSTACK_SECRET_KEY = os.getenv("PAYSTACK_SECRET_KEY")
+if not PAYSTACK_SECRET_KEY:
+    raise RuntimeError(
+        "PAYSTACK_SECRET_KEY is not set. Add your Paystack secret key "
+        "(sk_test_... or sk_live_...) to your .env file."
+    )
+
+# Set this to your real deployed URL (e.g. https://pharmahub.onrender.com) once
+# you have one. If unset, we fall back to request.base_url, which is only
+# reliable if your host forwards the original scheme/host correctly — behind
+# most PaaS proxies it isn't, and Paystack ends up redirecting shoppers to a
+# broken internal URL after payment. Setting this explicitly avoids that.
+PUBLIC_BASE_URL = os.getenv("PUBLIC_BASE_URL")
+
+# Frontend origins allowed to call this API. Only matters if you deploy the
+# frontend on a different domain than the API — same-origin deployments (the
+# default here, via the /frontend static mount) don't need this at all.
+ALLOWED_ORIGINS = [o.strip() for o in os.getenv("ALLOWED_ORIGINS", "").split(",") if o.strip()]
 
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 30
@@ -109,6 +132,19 @@ async def lifespan(app: FastAPI):
 
 
 app = FastAPI(title="PharmaHub API", lifespan=lifespan)
+
+if ALLOWED_ORIGINS:
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=ALLOWED_ORIGINS,
+        allow_credentials=False,  # we use Bearer tokens, not cookies
+        allow_methods=["*"],
+        allow_headers=["*"],
+    )
+
+# Mounted under /frontend (not "/") so this catch-all can't shadow the API
+# routes declared below it — see the "/" redirect just below for why visiting
+# the bare domain still lands on the site instead of the {"message": ...} JSON.
 app.mount("/frontend", StaticFiles(directory="frontend", html=True), name="frontend")
 
 
@@ -180,7 +216,7 @@ class OrderItem(BaseModel):
 class Order(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
-    id: int
+    id: uuid.UUID
     customer_username: str
     items: list[OrderItem]
     subtotal: float
@@ -191,6 +227,7 @@ class Order(BaseModel):
     status: str
     payment_status: PaymentStatus = PaymentStatus.PENDING
     payment_reference: str | None = None
+    created_at: datetime
 
 
 class CheckoutRequest(BaseModel):
@@ -230,6 +267,11 @@ class OrderStatus(str, Enum):
     SHIPPED = "Shipped"
     DELIVERED = "Delivered"
     CANCELLED = "Cancelled"
+
+
+class OrderSort(str, Enum):
+    NEWEST = "newest"
+    OLDEST = "oldest"
 
 
 class OrderStatusUpdate(BaseModel):
@@ -331,6 +373,7 @@ def order_to_schema(order: models.Order) -> Order:
         status=order.status,
         payment_status=PaymentStatus(order.payment_status),
         payment_reference=order.payment_reference,
+        created_at=order.created_at,
     )
 
 
@@ -340,7 +383,14 @@ def order_to_schema(order: models.Order) -> Order:
 
 @app.get("/")
 def home():
-    return {"message": "Welcome to PharmaHub"}
+    # Visitors hitting the deployed domain directly should land on the site,
+    # not a bare JSON blob.
+    return RedirectResponse(url="/frontend/index.html")
+
+
+@app.get("/api")
+def api_info():
+    return {"message": "Welcome to PharmaHub API"}
 
 
 @app.get("/config")
@@ -425,8 +475,14 @@ def get_medicine(medicine_id: int, db: Session = Depends(get_db)):
 
 
 @app.get("/admin/orders", response_model=list[Order])
-def get_orders(current_admin: models.Admin = Depends(get_current_admin), db: Session = Depends(get_db)):
-    return [order_to_schema(o) for o in db.query(models.Order).all()]
+def get_orders(
+    sort: OrderSort = OrderSort.NEWEST,
+    current_admin: models.Admin = Depends(get_current_admin),
+    db: Session = Depends(get_db),
+):
+    order_by = models.Order.created_at.desc() if sort == OrderSort.NEWEST else models.Order.created_at.asc()
+    orders = db.query(models.Order).order_by(order_by).all()
+    return [order_to_schema(o) for o in orders]
 
 
 @app.get("/admin/analytics", response_model=AnalyticsSummary)
@@ -485,7 +541,7 @@ def get_analytics(
 
 
 @app.get("/orders/{order_id}", response_model=Order)
-def get_order(order_id: int, current_admin: models.Admin = Depends(get_current_admin), db: Session = Depends(get_db)):
+def get_order(order_id: uuid.UUID, current_admin: models.Admin = Depends(get_current_admin), db: Session = Depends(get_db)):
     order = db.get(models.Order, order_id)
     if order:
         return order_to_schema(order)
@@ -494,10 +550,17 @@ def get_order(order_id: int, current_admin: models.Admin = Depends(get_current_a
 
 @app.get("/customer/orders", response_model=list[Order])
 def get_customer_orders(
+    sort: OrderSort = OrderSort.NEWEST,
     current_customer: models.Customer = Depends(get_current_customer),
     db: Session = Depends(get_db),
 ):
-    orders = db.query(models.Order).filter(models.Order.customer_id == current_customer.id).all()
+    order_by = models.Order.created_at.desc() if sort == OrderSort.NEWEST else models.Order.created_at.asc()
+    orders = (
+        db.query(models.Order)
+        .filter(models.Order.customer_id == current_customer.id)
+        .order_by(order_by)
+        .all()
+    )
     return [order_to_schema(o) for o in orders]
 
 
@@ -665,7 +728,7 @@ def register_customer(customer: Customer, db: Session = Depends(get_db)):
 
 @app.post("/orders/{order_id}/payment")
 async def process_payment(
-    order_id: int,
+    order_id: uuid.UUID,
     request: Request,
     current_customer: models.Customer = Depends(get_current_customer),
     db: Session = Depends(get_db),
@@ -685,7 +748,8 @@ async def process_payment(
     # Paystack redirects the shopper here after they pay, appending its own
     # ?reference=...&trxref=... query params — we tack on order_id ourselves
     # so payment-callback.html knows which order to verify.
-    callback_url = f"{str(request.base_url).rstrip('/')}/frontend/payment-callback.html?order_id={order_id}"
+    base_url = PUBLIC_BASE_URL.rstrip("/") if PUBLIC_BASE_URL else str(request.base_url).rstrip("/")
+    callback_url = f"{base_url}/frontend/payment-callback.html?order_id={order_id}"
 
     async with httpx.AsyncClient() as client:
         response = await client.post(
@@ -712,7 +776,7 @@ async def process_payment(
 
 @app.post("/orders/{order_id}/payment/verify")
 async def verify_payment(
-    order_id: int,
+    order_id: uuid.UUID,
     reference: str,
     current_customer: models.Customer = Depends(get_current_customer),
     db: Session = Depends(get_db),
@@ -800,7 +864,7 @@ def update_cart_item(
 
 @app.put("/admin/orders/{order_id}/status", response_model=Order)
 def update_order_status(
-    order_id: int,
+    order_id: uuid.UUID,
     status_update: OrderStatusUpdate,
     current_admin: models.Admin = Depends(get_current_admin),
     db: Session = Depends(get_db),

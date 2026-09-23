@@ -28,8 +28,25 @@ const PAYMENT_BADGE_CLASS = {
     "Refunded": "badge-refunded",
 };
 
+// Order ids are UUIDs now — long and not meant to be typed, so we show a
+// short form (the first segment) and keep the full id in data-id attributes
+// for anything that actually calls the API.
+function shortOrderId(id) {
+    return id.split("-")[0].toUpperCase();
+}
+
+function formatOrderDate(isoString) {
+    const date = new Date(isoString);
+    return date.toLocaleString(undefined, {
+        dateStyle: "medium",
+        timeStyle: "short",
+    });
+}
+
 function loadOrders() {
-    fetch("/customer/orders", { headers: authHeaders() })
+    const sort = document.getElementById("orders-sort").value;
+
+    fetch(`/customer/orders?sort=${sort}`, { headers: authHeaders() })
         .then(response => {
             if (handleAuthError(response)) return;
             return response.json();
@@ -50,8 +67,8 @@ function renderOrders(orders) {
         return;
     }
 
-    // Most recent first.
-    orders.slice().reverse().forEach(order => {
+    // The backend already returns orders in the requested sort order.
+    orders.forEach(order => {
         const card = document.createElement("div");
         card.className = "order-card";
 
@@ -65,8 +82,9 @@ function renderOrders(orders) {
         card.innerHTML = `
             <div class="order-card-header">
                 <div>
-                    <h3>Order #${order.id}</h3>
+                    <h3 title="Order ${order.id}">Order #${shortOrderId(order.id)}</h3>
                     <span class="order-status">${order.status}</span>
+                    <span class="order-date">${formatOrderDate(order.created_at)}</span>
                 </div>
                 <span class="payment-badge ${badgeClass}">${order.payment_status}</span>
             </div>
@@ -132,5 +150,7 @@ function payForOrder(orderId, button) {
             button.textContent = "Pay Now";
         });
 }
+
+document.getElementById("orders-sort").addEventListener("change", loadOrders);
 
 loadOrders();

@@ -12,6 +12,12 @@ if not DATABASE_URL:
         "postgresql+psycopg2://pharmahub:pharmahub@localhost:5432/pharmahub"
     )
 
+# Some hosts (Render, Railway, Heroku) hand out "postgres://...", but
+# SQLAlchemy 2.x only accepts "postgresql://...". Left alone, this raises a
+# confusing driver error the moment you deploy there.
+if DATABASE_URL.startswith("postgres://"):
+    DATABASE_URL = DATABASE_URL.replace("postgres://", "postgresql://", 1)
+
 # pool_pre_ping avoids handing out dead connections after the DB restarts
 engine = create_engine(DATABASE_URL, pool_pre_ping=True)
 

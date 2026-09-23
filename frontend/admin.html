@@ -4,6 +4,13 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Admin Dashboard - PharmaHub</title>
+    <script>
+        (function () {
+            var saved = localStorage.getItem("theme");
+            var theme = saved || (window.matchMedia && window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light");
+            document.documentElement.setAttribute("data-theme", theme);
+        })();
+    </script>
     <link rel="stylesheet" href="css/style.css">
 </head>
 
@@ -73,12 +80,22 @@
 
         <!-- Orders -->
         <section id="orders-tab" class="admin-tab-panel hidden">
-            <h3>Orders</h3>
+            <div class="admin-panel-header">
+                <h3>Orders</h3>
+                <div class="orders-toolbar">
+                    <label for="orders-sort">Sort by date</label>
+                    <select id="orders-sort">
+                        <option value="newest">Newest first</option>
+                        <option value="oldest">Oldest first</option>
+                    </select>
+                </div>
+            </div>
 
             <table class="admin-table">
                 <thead>
                     <tr>
                         <th>ID</th>
+                        <th>Date</th>
                         <th>Customer</th>
                         <th>Delivery Address</th>
                         <th>Total</th>

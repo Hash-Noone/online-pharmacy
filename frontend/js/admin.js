@@ -135,8 +135,25 @@ const ORDER_TRANSITIONS = {
     "Shipped": ["Delivered"],
 };
 
+// Order ids are UUIDs now — long and not meant to be typed, so we show a
+// short form (the first segment, with the full id in a tooltip) and keep
+// the full id in data-id attributes for anything that calls the API.
+function shortOrderId(id) {
+    return id.split("-")[0].toUpperCase();
+}
+
+function formatOrderDate(isoString) {
+    const date = new Date(isoString);
+    return date.toLocaleString(undefined, {
+        dateStyle: "medium",
+        timeStyle: "short",
+    });
+}
+
 function loadOrders() {
-    fetch("/admin/orders", { headers: authHeaders() })
+    const sort = document.getElementById("orders-sort").value;
+
+    fetch(`/admin/orders?sort=${sort}`, { headers: authHeaders() })
         .then(response => {
             if (handleAuthError(response)) return;
             return response.json();
@@ -154,7 +171,8 @@ function loadOrders() {
 
                 const row = document.createElement("tr");
                 row.innerHTML = `
-                    <td>${order.id}</td>
+                    <td title="${order.id}">${shortOrderId(order.id)}</td>
+                    <td>${formatOrderDate(order.created_at)}</td>
                     <td>${order.customer_username}</td>
                     <td>${order.delivery_address}</td>
                     <td>₦${order.total_price.toLocaleString()}</td>
@@ -181,6 +199,8 @@ function loadOrders() {
         })
         .catch(error => console.error("Error loading orders:", error));
 }
+
+document.getElementById("orders-sort").addEventListener("change", loadOrders);
 
 function updateOrderStatus(orderId, status) {
     fetch(`/admin/orders/${orderId}/status`, {

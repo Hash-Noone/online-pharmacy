@@ -4,6 +4,7 @@
 document.addEventListener("DOMContentLoaded", function () {
 
     addWhatsAppButton();
+    addThemeToggle();
 
     const token = localStorage.getItem("access_token");
     const role = localStorage.getItem("role");
@@ -127,6 +128,44 @@ function addWhatsAppButton() {
         .catch(() => {
             // Keep the default link if /config isn't reachable.
         });
+}
+
+
+// Dark mode toggle. The initial theme is set synchronously by a small inline
+// script in each page's <head> (to avoid a flash of the wrong theme); this
+// just adds the button and lets the user flip it, remembering the choice.
+function addThemeToggle() {
+
+    if (document.getElementById("theme-toggle")) {
+        return;
+    }
+
+    const navLinks = document.querySelector("nav div");
+    if (!navLinks) {
+        return;
+    }
+
+    const button = document.createElement("button");
+    button.id = "theme-toggle";
+    button.type = "button";
+
+    function currentTheme() {
+        return document.documentElement.getAttribute("data-theme") === "dark" ? "dark" : "light";
+    }
+
+    function updateLabel() {
+        button.textContent = currentTheme() === "dark" ? "☀️ Light" : "🌙 Dark";
+    }
+
+    button.addEventListener("click", function () {
+        const next = currentTheme() === "dark" ? "light" : "dark";
+        document.documentElement.setAttribute("data-theme", next);
+        localStorage.setItem("theme", next);
+        updateLabel();
+    });
+
+    updateLabel();
+    navLinks.appendChild(button);
 }
 
 
