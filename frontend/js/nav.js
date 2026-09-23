@@ -1,25 +1,34 @@
-// Runs on every page and updates the navigation
-// based on the user's login status.
+// PharmaHub navigation
+// Updates the navbar based on the user's login status.
 
 document.addEventListener("DOMContentLoaded", function () {
-
     addWhatsAppButton();
-    addThemeToggle();
 
     const token = localStorage.getItem("access_token");
     const role = localStorage.getItem("role");
 
-    const navLinks = document.querySelector("nav div");
+    const nav = document.querySelector("nav");
+
+    if (!nav) {
+        return;
+    }
+
+    const navLinks = nav.querySelector("div");
 
     if (!navLinks) {
         return;
     }
 
-    // Remove any links that nav.js controls.
-    // This prevents duplicates.
-    navLinks.querySelectorAll("#orders-link, #logout-link, #admin-link").forEach(link => {
-        link.remove();
-    });
+    // Create mobile menu button
+    addMobileMenuButton(nav, navLinks);
+
+    // Add dark mode button
+    addThemeToggle(navLinks);
+
+    // Remove links controlled by nav.js.
+    navLinks
+        .querySelectorAll("#orders-link, #logout-link, #admin-link")
+        .forEach(link => link.remove());
 
     const loginLink = navLinks.querySelector('a[href="login.html"]');
     const registerLink = navLinks.querySelector('a[href="register.html"]');
@@ -30,18 +39,14 @@ document.addEventListener("DOMContentLoaded", function () {
     // -------------------------
 
     if (token && role === "admin") {
-
-        // Admin doesn't need Register.
         if (registerLink) {
             registerLink.remove();
         }
 
-        // Admin doesn't need customer cart.
         if (cartLink) {
             cartLink.remove();
         }
 
-        // Change Login to Admin Dashboard.
         if (loginLink) {
             loginLink.textContent = "Admin Dashboard";
             loginLink.href = "admin.html";
@@ -57,7 +62,6 @@ document.addEventListener("DOMContentLoaded", function () {
         }
 
         addLogoutLink(navLinks);
-
         return;
     }
 
@@ -66,22 +70,15 @@ document.addEventListener("DOMContentLoaded", function () {
     // -------------------------
 
     if (token && role === "customer") {
-
-        // Customer doesn't need Register.
         if (registerLink) {
             registerLink.remove();
         }
 
-        // Customer doesn't need Login.
         if (loginLink) {
             loginLink.remove();
         }
 
-        // Add My Orders.
         addOrdersLink(navLinks);
-
-        // Keep Cart visible.
-        // Add Logout.
         addLogoutLink(navLinks);
 
         return;
@@ -91,87 +88,58 @@ document.addEventListener("DOMContentLoaded", function () {
     // NOT LOGGED IN
     // -------------------------
 
-    // Leave the normal navigation unchanged.
+    // Keep the normal Login / Register / Cart links.
 });
 
 
-// Floating "Chat with a Pharmacist" button, shown on every page.
-// Pulls the support number from /config so it can be changed server-side
-// without touching the frontend.
-function addWhatsAppButton() {
+// -------------------------
+// Mobile menu
+// -------------------------
 
-    if (document.getElementById("whatsapp-float")) {
-        return;
-    }
-
-    const link = document.createElement("a");
-    link.id = "whatsapp-float";
-    link.className = "whatsapp-float";
-    link.target = "_blank";
-    link.rel = "noopener";
-    link.innerHTML = `<span class="whatsapp-icon">💬</span><span class="whatsapp-label">Chat with a Pharmacist</span>`;
-
-    // Sensible default while /config is loading (or if it fails).
-    link.href = "https://wa.me/2348000000000?text=" +
-        encodeURIComponent("Hi, I have a question about a medicine on PharmaHub.");
-
-    document.body.appendChild(link);
-
-    fetch("/config")
-        .then(response => response.json())
-        .then(config => {
-            if (config && config.whatsapp_number) {
-                link.href = `https://wa.me/${config.whatsapp_number}?text=` +
-                    encodeURIComponent("Hi, I have a question about a medicine on PharmaHub.");
-            }
-        })
-        .catch(() => {
-            // Keep the default link if /config isn't reachable.
-        });
-}
-
-
-// Dark mode toggle. The initial theme is set synchronously by a small inline
-// script in each page's <head> (to avoid a flash of the wrong theme); this
-// just adds the button and lets the user flip it, remembering the choice.
-function addThemeToggle() {
-
-    if (document.getElementById("theme-toggle")) {
-        return;
-    }
-
-    const navLinks = document.querySelector("nav div");
-    if (!navLinks) {
+function addMobileMenuButton(nav, navLinks) {
+    if (document.getElementById("mobile-menu-toggle")) {
         return;
     }
 
     const button = document.createElement("button");
-    button.id = "theme-toggle";
+
+    button.id = "mobile-menu-toggle";
     button.type = "button";
+    button.setAttribute("aria-label", "Open navigation menu");
+    button.setAttribute("aria-expanded", "false");
+    button.textContent = "☰";
 
-    function currentTheme() {
-        return document.documentElement.getAttribute("data-theme") === "dark" ? "dark" : "light";
-    }
-
-    function updateLabel() {
-        button.textContent = currentTheme() === "dark" ? "☀️ Light" : "🌙 Dark";
-    }
+    nav.insertBefore(button, navLinks);
 
     button.addEventListener("click", function () {
-        const next = currentTheme() === "dark" ? "light" : "dark";
-        document.documentElement.setAttribute("data-theme", next);
-        localStorage.setItem("theme", next);
-        updateLabel();
+        const isOpen = navLinks.classList.toggle("mobile-menu-open");
+
+        button.textContent = isOpen ? "✕" : "☰";
+        button.setAttribute("aria-expanded", isOpen ? "true" : "false");
+        button.setAttribute(
+            "aria-label",
+            isOpen ? "Close navigation menu" : "Open navigation menu"
+        );
     });
 
-    updateLabel();
-    navLinks.appendChild(button);
+    // Close the menu after clicking a navigation link.
+    navLinks.addEventListener("click", function (event) {
+        if (event.target.tagName === "A") {
+            navLinks.classList.remove("mobile-menu-open");
+
+            button.textContent = "☰";
+            button.setAttribute("aria-expanded", "false");
+            button.setAttribute("aria-label", "Open navigation menu");
+        }
+    });
 }
 
 
-function addOrdersLink(navLinks) {
+// -------------------------
+// My Orders
+// -------------------------
 
-    // Don't create a duplicate.
+function addOrdersLink(navLinks) {
     if (navLinks.querySelector("#orders-link")) {
         return;
     }
@@ -192,9 +160,11 @@ function addOrdersLink(navLinks) {
 }
 
 
-function addLogoutLink(navLinks) {
+// -------------------------
+// Logout
+// -------------------------
 
-    // Don't create a duplicate.
+function addLogoutLink(navLinks) {
     if (navLinks.querySelector("#logout-link")) {
         return;
     }
@@ -206,7 +176,6 @@ function addLogoutLink(navLinks) {
     logoutLink.textContent = "Logout";
 
     logoutLink.addEventListener("click", function (event) {
-
         event.preventDefault();
 
         localStorage.removeItem("access_token");
@@ -216,4 +185,96 @@ function addLogoutLink(navLinks) {
     });
 
     navLinks.appendChild(logoutLink);
+}
+
+
+// -------------------------
+// WhatsApp
+// -------------------------
+
+function addWhatsAppButton() {
+    if (document.getElementById("whatsapp-float")) {
+        return;
+    }
+
+    const link = document.createElement("a");
+
+    link.id = "whatsapp-float";
+    link.className = "whatsapp-float";
+    link.target = "_blank";
+    link.rel = "noopener";
+
+    link.innerHTML = `
+        <span class="whatsapp-icon">💬</span>
+        <span class="whatsapp-label">Chat with a Pharmacist</span>
+    `;
+
+    link.href =
+        "https://wa.me/2348000000000?text=" +
+        encodeURIComponent(
+            "Hi, I have a question about a medicine on PharmaHub."
+        );
+
+    document.body.appendChild(link);
+
+    fetch("/config")
+        .then(response => response.json())
+        .then(config => {
+            if (config && config.whatsapp_number) {
+                link.href =
+                    `https://wa.me/${config.whatsapp_number}?text=` +
+                    encodeURIComponent(
+                        "Hi, I have a question about a medicine on PharmaHub."
+                    );
+            }
+        })
+        .catch(() => {
+            // Keep the default link.
+        });
+}
+
+
+// -------------------------
+// Dark mode
+// -------------------------
+
+function addThemeToggle(navLinks) {
+    if (document.getElementById("theme-toggle")) {
+        return;
+    }
+
+    const button = document.createElement("button");
+
+    button.id = "theme-toggle";
+    button.type = "button";
+
+    function currentTheme() {
+        return document.documentElement.getAttribute("data-theme") === "dark"
+            ? "dark"
+            : "light";
+    }
+
+    function updateLabel() {
+        button.textContent =
+            currentTheme() === "dark"
+                ? "☀️ Light"
+                : "🌙 Dark";
+    }
+
+    button.addEventListener("click", function () {
+        const next =
+            currentTheme() === "dark"
+                ? "light"
+                : "dark";
+
+        document.documentElement.setAttribute("data-theme", next);
+
+        localStorage.setItem("theme", next);
+
+        updateLabel();
+    });
+
+    updateLabel();
+
+    navLinks.appendChild(button);
 }

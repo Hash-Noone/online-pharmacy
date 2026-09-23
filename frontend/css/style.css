@@ -55,26 +55,158 @@ body {
     transition: background-color 0.15s ease, color 0.15s ease;
 }
 
+/* =========================
+   NAVBAR
+   ========================= */
+
 header {
     background-color: var(--surface);
-    padding: 20px 50px;
+    padding: 18px 50px;
     border-bottom: 1px solid var(--border);
+    position: sticky;
+    top: 0;
+    z-index: 1000;
 }
 
 nav {
+    max-width: 1200px;
+    margin: 0 auto;
+
     display: flex;
     justify-content: space-between;
     align-items: center;
+    gap: 20px;
 }
 
 nav h1 {
     font-size: 28px;
+    margin: 0;
+    color: var(--brand);
+    white-space: nowrap;
+}
+
+nav > div {
+    display: flex;
+    align-items: center;
+    gap: 8px;
 }
 
 nav a {
     text-decoration: none;
     color: var(--text);
-    margin-left: 25px;
+    margin-left: 0;
+    padding: 9px 12px;
+    border-radius: 7px;
+    font-size: 14px;
+    font-weight: 500;
+    transition: background-color 0.2s ease, color 0.2s ease;
+}
+
+nav a:hover {
+    background-color: var(--accent-bg);
+    color: var(--brand);
+}
+
+/* Dark mode button */
+
+#theme-toggle {
+    border: 1px solid var(--border);
+    background: var(--surface);
+    color: var(--text);
+    padding: 8px 12px;
+    border-radius: 7px;
+    cursor: pointer;
+    font-size: 14px;
+    margin-left: 4px;
+}
+
+#theme-toggle:hover {
+    background-color: var(--accent-bg);
+}
+
+/* Logout */
+
+#logout-link {
+    color: var(--danger);
+}
+
+#logout-link:hover {
+    background-color: var(--danger-bg);
+    color: var(--danger);
+}
+
+/* Mobile menu button */
+
+#mobile-menu-toggle {
+    display: none;
+
+    border: 1px solid var(--border);
+    background: var(--surface);
+    color: var(--text);
+
+    font-size: 24px;
+    line-height: 1;
+
+    padding: 7px 10px;
+    border-radius: 7px;
+    cursor: pointer;
+}
+
+
+/* =========================
+   MOBILE NAVBAR
+   ========================= */
+
+@media (max-width: 768px) {
+
+    header {
+        padding: 15px 20px;
+    }
+
+    nav {
+        position: relative;
+        flex-wrap: wrap;
+    }
+
+    nav h1 {
+        font-size: 23px;
+    }
+
+    #mobile-menu-toggle {
+        display: block;
+    }
+
+    nav > div {
+        display: none;
+
+        width: 100%;
+        flex-direction: column;
+        align-items: stretch;
+
+        padding-top: 12px;
+        margin-top: 8px;
+
+        border-top: 1px solid var(--border);
+    }
+
+    nav > div.mobile-menu-open {
+        display: flex;
+    }
+
+    nav a {
+        width: 100%;
+        box-sizing: border-box;
+        padding: 12px;
+        margin: 0;
+
+        border-radius: 7px;
+    }
+
+    #theme-toggle {
+        width: 100%;
+        margin: 4px 0 0;
+        text-align: left;
+    }
 }
 
 .hero {
